@@ -1,0 +1,42 @@
+{
+  "name": "bazaar_backend",
+  "version": "1.0.0",
+  "description": "Backend of Bazaar, an ecommerce web application built on mern stack.",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon",
+    "build": "rimraf ./build && tsc",
+    "prod": "npm run build && node build/app.js",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "prettier:fix": "prettier --parser typescript --write \"src/**/*.ts\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SadaqatDahani786/bazaar_backend.git"
+  },
+  "author": "Sadaqat Dahani",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SadaqatDahani786/bazaar_backend/issues"
+  },
+  "homepage": "https://github.com/SadaqatDahani786/bazaar_backend#readme",
+  "devDependencies": {
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/node": "^18.14.4",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
+    "eslint": "^8.35.0",
+    "nodemon": "^2.0.20",
+    "prettier": "^2.8.4",
+    "rimraf": "^4.1.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2"
+  }
+}
