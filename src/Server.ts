@@ -1,5 +1,10 @@
 import { Express } from 'express'
+import { Server as HttpServer } from 'http'
 import { connect } from 'mongoose'
+import {
+    unhandledPromiseRejectionHandler,
+    uncaughtExceptionHandler,
+} from './error handling/errorHandlers'
 
 /**
  ** ====================================
@@ -17,6 +22,7 @@ export interface IServer {
     readonly app: Express
     readonly port: number
     readonly nodeEnv: NodeEnv
+    readonly server: HttpServer | null
 }
 
 /**
@@ -33,6 +39,7 @@ export default class Server implements IServer {
     readonly app: Express //express application
     readonly port: number //port where application will run
     readonly nodeEnv: NodeEnv //node environment
+    server: HttpServer | null //http server
 
     /**
      ** **
@@ -43,6 +50,10 @@ export default class Server implements IServer {
         this.app = app
         this.port = port ? port : ((process.env.PORT_NO || 3000) as number)
         this.nodeEnv = process.env.NODE_ENVIRONMENT as NodeEnv
+        this.server = null
+
+        //Register Error Handler
+        this.registerErrorHandlers()
 
         // NODE ENV
         console.log(`Node Environment Is In Mode:\t\t[${this.nodeEnv}]`)
@@ -53,7 +64,7 @@ export default class Server implements IServer {
      ** ** ** CONNECT TO MONGODB
      ** **
      */
-    async connectMongodb() {
+    private async connectMongodb() {
         //connect to mongodb
         try {
             await connect(
@@ -71,6 +82,23 @@ export default class Server implements IServer {
 
     /**
      ** **
+     ** ** ** HANDLE NODE PROCESS ERROR EVENTS
+     ** **
+     */
+    private registerErrorHandlers() {
+        //Promise Rejection
+        process.on('unhandledRejection', (err: Error) => {
+            unhandledPromiseRejectionHandler(err, this)
+        })
+
+        //UncaughtException
+        process.on('uncaughtException', (err) =>
+            uncaughtExceptionHandler(err, this)
+        )
+    }
+
+    /**
+     ** **
      ** ** ** RUN SERVER
      ** **
      */
@@ -79,8 +107,19 @@ export default class Server implements IServer {
         this.connectMongodb()
 
         //Start spinning http server
-        this.app.listen(this.port, () => {
+        this.server = this.app.listen(this.port, () => {
             console.log(`App Started Running On Port:\t\t[${this.port}]`)
+        })
+    }
+
+    /**
+     ** **
+     ** ** ** CLOSE SERVER
+     ** **
+     */
+    close() {
+        this.server?.close(() => {
+            process.exit(1)
         })
     }
 }

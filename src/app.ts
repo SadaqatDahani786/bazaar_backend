@@ -4,10 +4,12 @@
  ** ====================================
  */
 import express from 'express'
-import cors from 'cors'
 import dotenv from 'dotenv'
+import cors from 'cors'
+import bodyParser from 'body-parser'
 
 import Server from './Server'
+import { errorHandler, errorHandler404 } from './error handling/errorHandlers'
 
 /**
  ** ====================================
@@ -24,6 +26,15 @@ const HttpServer = new Server(app)
  ** ====================================
  */
 app.use(cors())
+app.use(bodyParser.json({ limit: '10kb' }))
+
+/**
+ ** ====================================
+ ** ERROR HANDLING
+ ** ====================================
+ */
+app.all('*', errorHandler404)
+app.use(errorHandler)
 
 /**
  ** ====================================
