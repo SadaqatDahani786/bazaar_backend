@@ -3,7 +3,7 @@ import { Error } from 'mongoose'
 import { MongoServerError } from 'mongodb'
 
 import Server from '../Server'
-import { AppError } from './AppError'
+import AppError from './AppError'
 
 /**
  ** ====================================

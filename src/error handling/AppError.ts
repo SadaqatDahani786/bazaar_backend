@@ -17,7 +17,7 @@ export interface IAppError {
  ** Class [AppError]
  ** ====================================
  */
-export class AppError extends Error implements IAppError {
+export default class AppError extends Error implements IAppError {
     readonly message: string
     readonly status: 'failed' | 'error'
     readonly statusCode: number
