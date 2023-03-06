@@ -10,6 +10,7 @@ import { errorHandler, errorHandler404 } from './error handling/errorHandlers'
 
 //Routers
 import RouterMedia from './routes/media'
+import RouterCategory from './routes/cateogry'
 
 /**
  ** ====================================
@@ -39,6 +40,7 @@ app.use(express.static('src/public'))
  ** ====================================
  */
 app.use(`${API_ENDPOINT}/media`, RouterMedia)
+app.use(`${API_ENDPOINT}/category`, RouterCategory)
 
 /**
  ** ====================================
