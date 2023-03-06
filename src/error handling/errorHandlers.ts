@@ -30,6 +30,14 @@ export const errorHandler = (
             error: err.stack,
         })
     } else if (envNode === 'production') {
+        //Image Upload Error
+        if (err.name === 'MulterError') {
+            return new AppError(
+                `Image upload failed, make sure to provide a correct no of valid image files.`,
+                400
+            ).sendResponse(res)
+        }
+
         //Input Validation Error
         if (
             err instanceof Error.ValidationError &&

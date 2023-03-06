@@ -13,7 +13,10 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noImplicitAny": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,        
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "types/global.d.ts", "src/packages/multer.tsr.ts"],  
+  "ts-node": {
+    "files": true
+  },  
 }

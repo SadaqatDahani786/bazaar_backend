@@ -1,5 +1,5 @@
-import { Express } from 'express'
 import { Server as HttpServer } from 'http'
+import { Express } from 'express'
 import { connect } from 'mongoose'
 import {
     unhandledPromiseRejectionHandler,

@@ -106,5 +106,5 @@ dist
 # Buids
 build/
 
-# Upload directory
-public/uploads/
+# Uploads directory
+src/public/uploads/
