@@ -117,11 +117,11 @@ export const createMedia = catchAsyncHandler(async (req, res) => {
  ** ==========================================================
  */
 export const getMedia = catchAsyncHandler(async (req, res) => {
-    //1) Get ID of a media to retrieve
-    const ID = req.params.id
+    //1) Get id of a media to be retrieved
+    const id = req.params.id
 
     //2) Find media from its id
-    const DocMedia = await Media.findById(ID)
+    const DocMedia = await Media.findById(id)
 
     //3) If no doc found with the ID, throw error
     if (!DocMedia) {
@@ -131,14 +131,14 @@ export const getMedia = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //4) Transormed docsMedia to have the full url for images
+    //4) Transormed DocMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia.toJSON(),
         url: makeUrlComplete(DocMedia.url, req),
     }
 
     //5) Send a response
-    res.json({
+    res.status(200).json({
         status: 'success',
         data: transormedDocMedia,
     })
@@ -158,14 +158,14 @@ export const getManyMedia = catchAsyncHandler(async (req, res) => {
         throw new AppError('No media document found to be retrieved.', 404)
     }
 
-    //3) Transormed docsMedia to have the full url for images
+    //3) Transormed DocsMedia to have the full url for images
     const transormedDocsMedia = DocsMedia.map((media) => ({
         ...media.toJSON(),
         url: makeUrlComplete(media.url, req),
     }))
 
     //4) Send a response
-    res.json({
+    res.status(200).json({
         status: 'success',
         results: transormedDocsMedia.length,
         data: transormedDocsMedia,
@@ -178,7 +178,7 @@ export const getManyMedia = catchAsyncHandler(async (req, res) => {
  ** ==========================================================
  */
 export const updateMedia = catchAsyncHandler(async (req, res) => {
-    //1) Get ID of media file to be deleted
+    //1) Get id of media file to be deleted
     const id = req.params.id
 
     //2) Get uploaded image dimenstions with imageSize
@@ -216,7 +216,7 @@ export const updateMedia = catchAsyncHandler(async (req, res) => {
         }
     )
 
-    //5) If no doc found with the ID, throw error
+    //5) If no doc found with the id, throw error
     if (!DocMedia) {
         throw new AppError(
             'No media document found to be update with the id provided.',
@@ -224,14 +224,14 @@ export const updateMedia = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //6) Transormed docsMedia to have the full url for images
+    //6) Transormed DocMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia?.toJSON(),
         url: makeUrlComplete(DocMedia.url, req),
     }
 
     //7) Send a response
-    res.status(201).json({
+    res.status(200).json({
         status: 'success',
         data: transormedDocMedia,
     })
@@ -247,8 +247,16 @@ export const deleteMedia = catchAsyncHandler(async (req, res) => {
     const id = req.params.id
 
     //2) Delete media doc with id
-    await Media.deleteOne({ _id: id })
+    const DelResults = await Media.deleteOne({ _id: id })
 
-    //3) Send response
+    //3) If no doc found with the id, throw error
+    if (!DelResults || DelResults.deletedCount <= 0) {
+        throw new AppError(
+            'No media document found to be delete with the id provided.',
+            404
+        )
+    }
+
+    //4) Send response
     res.status(204).json()
 })
