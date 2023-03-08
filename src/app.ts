@@ -11,17 +11,21 @@ import { errorHandler, errorHandler404 } from './error handling/errorHandlers'
 //Routers
 import RouterMedia from './routes/media'
 import RouterCategory from './routes/cateogry'
+import RouterUser from './routes/user'
 
 /**
  ** ====================================
  ** INIT
  ** ====================================
  */
+//Config
 global.app_dir = path.resolve(__dirname)
 dotenv.config({ path: '.env' })
 
+//Vars
 const API_ENDPOINT = '/api/v1'
 
+//Init
 const app = express()
 const HttpServer = new Server(app)
 
@@ -41,6 +45,7 @@ app.use(express.static('src/public'))
  */
 app.use(`${API_ENDPOINT}/media`, RouterMedia)
 app.use(`${API_ENDPOINT}/category`, RouterCategory)
+app.use(`${API_ENDPOINT}/user`, RouterUser)
 
 /**
  ** ====================================
