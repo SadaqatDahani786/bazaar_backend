@@ -1,5 +1,6 @@
 //Utils
 import makeUrlComplete from '../utils/makeUrlComplete'
+import { isToPopulate } from '../utils/isToPopulate'
 
 //Models
 import Media from '../models/Media'
@@ -8,6 +9,9 @@ import Category from '../models/Category'
 //Error Handling
 import AppError from '../error handling/AppError'
 import { catchAsyncHandler } from '../error handling/errorHandlers'
+
+//Query Modifier
+import QueryModifier from '../packages/QueryModifier'
 
 /**
  ** ==========================================================
@@ -48,13 +52,33 @@ export const getCategory = catchAsyncHandler(async (req, res) => {
     //1) Get id of category to be retrieved
     const id = req.params.id
 
-    //2) Find category from its id
-    const DocCategory = await Category.findById(id).populate({
-        path: 'image parent',
-        select: { url: 1, _id: 0, name: 1, slug: 1 },
-    })
+    //2) Get query
+    const query = Category.findById(id)
 
-    //3) If no doc found with the id, throw error
+    //3) Populate fields only when it's okay to do so
+    if (isToPopulate('image', req)) {
+        query.populate({
+            path: 'image',
+            select: { url: 1, _id: 0 },
+        })
+    }
+    if (isToPopulate('parent', req)) {
+        query.populate({
+            path: 'parent',
+            select: { _id: 0, name: 1, slug: 1 },
+        })
+    }
+
+    //4) Apply query modifiers to query
+    const QueryModfier = new QueryModifier<typeof query>(
+        query,
+        req.query
+    ).select()
+
+    //4) Exec query to retrieve category doc found
+    const DocCategory = await QueryModfier.query.exec()
+
+    //5) If no doc found with the id, throw error
     if (!DocCategory) {
         throw new AppError(
             'No category document found to retrieve with the id provided.',
@@ -62,12 +86,14 @@ export const getCategory = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //4) Transormed DocCategory to have the full url for images
+    //6) Transormed DocCategory to have the full url for images
     if (DocCategory?.image instanceof Media) {
-        DocCategory.image.url = makeUrlComplete(DocCategory.image.url, req)
+        DocCategory.image.url = DocCategory.image.url
+            ? makeUrlComplete(DocCategory.image.url, req)
+            : ''
     }
 
-    //5) Send a response
+    //7) Send a response
     res.status(200).json({
         status: 'success',
         data: DocCategory,
@@ -80,20 +106,47 @@ export const getCategory = catchAsyncHandler(async (req, res) => {
  ** ==========================================================
  */
 export const getManyCategory = catchAsyncHandler(async (req, res) => {
-    //1) Retrieve all category docs
-    const DocsCategory = await Category.find().populate({
-        path: 'image parent',
-        select: { url: 1, _id: 0, name: 1, slug: 1 },
-    })
+    //1) Get query
+    const query = Category.find()
 
-    //2) Transormed DocsCategory to have the full url for images
+    //2) Populate fields only when it's okay to do so
+    if (isToPopulate('image', req)) {
+        query.populate({
+            path: 'image',
+            select: { url: 1, _id: 0 },
+        })
+    }
+    if (isToPopulate('parent', req)) {
+        query.populate({
+            path: 'parent',
+            select: { _id: 0, name: 1, slug: 1 },
+        })
+    }
+
+    //3) Apply query modifiers to query
+    const QueryModfier = new QueryModifier<typeof query>(query, req.query)
+        .filter()
+        .sort()
+        .select()
+        .paginate()
+
+    //4) Retrieve all category docs
+    const DocsCategory = await QueryModfier.query.exec()
+
+    //5) Transormed DocsCategory to have the full url for images
     const transformedDocCategories = DocsCategory.map((category) => {
         if (category?.image instanceof Media)
-            category.image.url = makeUrlComplete(category.image.url, req)
+            return {
+                ...category.toJSON(),
+                image: {
+                    url: makeUrlComplete(category.image.url, req),
+                },
+            }
+
         return category
     })
 
-    //3) Send a response
+    //6) Send a response
     res.status(200).json({
         status: 'success',
         results: transformedDocCategories.length,

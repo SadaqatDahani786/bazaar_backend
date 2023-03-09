@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose'
+import validator from 'validator'
 
 /**
  ** ====================================
@@ -41,6 +42,13 @@ const schemaMedia = new Schema({
         type: String,
         trim: true,
         maxLength: [200, 'File title must be less than 200 characters long.'],
+        validate: {
+            validator: function (name: string) {
+                return validator.isAlphanumeric(name, 'en-US', { ignore: ' ' })
+            },
+            message:
+                'A title must only contain letters, numbers or a whitspace, no special characters are allowed.',
+        },
     },
     description: {
         type: String,

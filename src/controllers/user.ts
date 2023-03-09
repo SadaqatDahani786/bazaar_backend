@@ -1,5 +1,6 @@
 //Utils
 import makeUrlComplete from '../utils/makeUrlComplete'
+import { isToPopulate } from '../utils/isToPopulate'
 
 //Models
 import Media from '../models/Media'
@@ -8,6 +9,9 @@ import User from '../models/User'
 //Error Handling
 import AppError from '../error handling/AppError'
 import { catchAsyncHandler } from '../error handling/errorHandlers'
+
+//Query Modifier
+import QueryModifier from '../packages/QueryModifier'
 
 /**
  ** ==========================================================
@@ -48,21 +52,35 @@ export const getUser = catchAsyncHandler(async (req, res) => {
     //1) Get id of user to be retrieved
     const id = req.params.id
 
-    //2) Find user by its id
-    const DocUser = await User.findById(id).populate({
-        path: 'photo',
-        select: { _id: 0, url: 1, title: 1 },
-    })
+    //2) Get query
+    const query = User.findById(id)
 
-    //3) If no user found with the id, throw err
+    //3) Populate fields only when it's okay to do so
+    if (isToPopulate('photo', req)) {
+        query.populate({
+            path: 'photo',
+            select: { _id: 0, url: 1, title: 1 },
+        })
+    }
+
+    //4) Apply query modifiers to query
+    const QueryModfier = new QueryModifier<typeof query>(
+        query,
+        req.query
+    ).select()
+
+    //5) Exec query to retrieve user doc match found
+    const DocUser = await QueryModfier.query.exec()
+
+    //6) If no user found with the id, throw err
     if (!DocUser)
         throw new AppError('No user document found with the id provided.', 404)
 
-    //4) Transormed DocUser to have the full url for images
+    //7) Transormed DocUser to have the full url for images
     if (DocUser.photo && DocUser.photo instanceof Media)
         DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
 
-    //5) Send a response
+    //8) Send a response
     res.status(200).json({
         status: 'sucess',
         data: DocUser,
@@ -75,20 +93,35 @@ export const getUser = catchAsyncHandler(async (req, res) => {
  ** ==========================================================
  */
 export const getManyUser = catchAsyncHandler(async (req, res) => {
-    //1) Retrieve all user docs
-    const DocsUser = await User.find().populate({
-        path: 'photo',
-        select: { _id: 0, url: 1, title: 1 },
-    })
+    //1) Get query
+    const query = User.find()
 
-    //2) Transormed DocsUser to have the full url for images
+    //2) Populate fields only when it's okay to do so
+    if (isToPopulate('photo', req)) {
+        query.populate({
+            path: 'photo',
+            select: { _id: 0, url: 1, title: 1 },
+        })
+    }
+
+    //3) Apply query modifiers to query
+    const QueryModfier = new QueryModifier<typeof query>(query, req.query)
+        .filter()
+        .sort()
+        .select()
+        .paginate()
+
+    //4) Exec query to retrieve all user docs match found
+    const DocsUser = await QueryModfier.query.exec()
+
+    //5) Transormed DocsUser to have the full url for images
     const transormedDocsUser = DocsUser.map((user) => {
         if (user?.photo instanceof Media)
             user.photo.url = makeUrlComplete(user.photo.url, req)
         return user
     })
 
-    //3) Send a response
+    //6) Send a response
     res.status(200).json({
         status: 'sucess',
         results: transormedDocsUser.length,

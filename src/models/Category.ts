@@ -22,10 +22,12 @@ const schemaCategory = new Schema({
             200,
             'Cateogory name must be less than 200 characters long.',
         ],
-        validate: [
-            validator.isAlpha,
-            'A category name must only contain alpha values.',
-        ],
+        validate: {
+            validator: function (name: string) {
+                return validator.isAlpha(name, 'en-US', { ignore: ' ' })
+            },
+            message: 'A category name must only contain alpha values.',
+        },
     },
     description: {
         type: String,

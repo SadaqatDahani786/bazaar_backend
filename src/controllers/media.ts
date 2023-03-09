@@ -1,6 +1,5 @@
 //Utils
 import { promisify } from 'util'
-import imageSize from 'image-size'
 import makeUrlComplete from '../utils/makeUrlComplete'
 
 //Model & Types
@@ -10,6 +9,10 @@ import { File } from '../types/file'
 //Error Handling
 import AppError from '../error handling/AppError'
 import { catchAsyncHandler } from '../error handling/errorHandlers'
+
+//Packages
+import QueryModifier from '../packages/QueryModifier'
+import imageSize from 'image-size'
 
 /**
  ** ==========================================================
@@ -120,8 +123,17 @@ export const getMedia = catchAsyncHandler(async (req, res) => {
     //1) Get id of a media to be retrieved
     const id = req.params.id
 
-    //2) Find media from its id
-    const DocMedia = await Media.findById(id)
+    //2) Get query
+    const query = Media.findById(id)
+
+    //3) Apply query modifiers to query
+    const QueryModfier = new QueryModifier<typeof query>(
+        query,
+        req.query
+    ).select()
+
+    //4) Exec query to retrieve media doc found
+    const DocMedia = await QueryModfier.query.exec()
 
     //3) If no doc found with the ID, throw error
     if (!DocMedia) {
@@ -134,7 +146,7 @@ export const getMedia = catchAsyncHandler(async (req, res) => {
     //4) Transormed DocMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia.toJSON(),
-        url: makeUrlComplete(DocMedia.url, req),
+        url: DocMedia.url ? makeUrlComplete(DocMedia.url, req) : undefined,
     }
 
     //5) Send a response
@@ -150,21 +162,31 @@ export const getMedia = catchAsyncHandler(async (req, res) => {
  ** ==========================================================
  */
 export const getManyMedia = catchAsyncHandler(async (req, res) => {
-    //1) Retrieve all media docs
-    const DocsMedia = await Media.find()
+    //1) Get query
+    const query = Media.find()
 
-    //2) If no doc founds, throw error
+    //2) Apply query modifiers to query
+    const QueryModfier = new QueryModifier<typeof query>(query, req.query)
+        .filter()
+        .sort()
+        .select()
+        .paginate()
+
+    //3) Exec query to retrieve all media docs match found
+    const DocsMedia = await QueryModfier.query.exec()
+
+    //4) If no doc founds, throw error
     if (!DocsMedia) {
         throw new AppError('No media document found to be retrieved.', 404)
     }
 
-    //3) Transormed DocsMedia to have the full url for images
+    //5) Transormed DocsMedia to have the full url for images
     const transormedDocsMedia = DocsMedia.map((media) => ({
         ...media.toJSON(),
-        url: makeUrlComplete(media.url, req),
+        url: media.url ? makeUrlComplete(media.url, req) : undefined,
     }))
 
-    //4) Send a response
+    //6) Send a response
     res.status(200).json({
         status: 'success',
         results: transormedDocsMedia.length,
