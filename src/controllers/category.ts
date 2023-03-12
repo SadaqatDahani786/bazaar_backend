@@ -4,7 +4,7 @@ import { isToPopulate } from '../utils/isToPopulate'
 
 //Models
 import Media from '../models/Media'
-import Category from '../models/Category'
+import Category, { ICategory } from '../models/Category'
 
 //Error Handling
 import AppError from '../error handling/AppError'
@@ -19,8 +19,20 @@ import QueryModifier from '../packages/QueryModifier'
  ** ==========================================================
  */
 export const createCategory = catchAsyncHandler(async (req, res) => {
-    //1) Category to be created
-    const categoryToBeCreated = req.body
+    //1) Get fields from request body
+    const categoryToBeCreated: ICategory = {
+        slug: req.body.slug,
+        name: req.body.name,
+        description: req.body.description,
+        image: undefined,
+        parent: req.body.parent,
+    }
+
+    //2) Check for image in req object, then set it
+    if (req.media) {
+        const mediaCreated = await Media.create(req.media)
+        categoryToBeCreated.image = mediaCreated._id
+    }
 
     //2) Create category
     const DocCategory = await Category.create(categoryToBeCreated)
@@ -163,10 +175,22 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
     //1) Get id of category to be updated
     const id = req.params.id
 
-    //2) Category to be updated
-    const categoryToBeUpdated = req.body
+    //2) Get fields from request body
+    const categoryToBeUpdated: ICategory = {
+        slug: req.body.slug,
+        name: req.body.name,
+        description: req.body.description,
+        image: undefined,
+        parent: req.body.parent,
+    }
 
-    //3) Updated category document
+    //3) Check for image in req object, then set it
+    if (req.media) {
+        const mediaCreated = await Media.create(req.media)
+        categoryToBeUpdated.image = mediaCreated._id
+    }
+
+    //4) Updated category document
     const DocCategory = await Category.findOneAndUpdate(
         { _id: id },
         categoryToBeUpdated,
@@ -176,7 +200,7 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
         select: { url: 1, _id: 0, name: 1, slug: 1 },
     })
 
-    //4) If no doc found with the id, throw error
+    //5) If no doc found with the id, throw error
     if (!DocCategory) {
         throw new AppError(
             'No category document found to be update with the id provided.',
@@ -184,12 +208,12 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //5) Transormed DocCategory to have the full url for images
+    //6) Transormed DocCategory to have the full url for images
     if (DocCategory.image instanceof Media) {
         DocCategory.image.url = makeUrlComplete(DocCategory.image.url, req)
     }
 
-    //6) Send a response
+    //7) Send a response
     res.status(200).json({
         status: 'success',
         data: DocCategory,

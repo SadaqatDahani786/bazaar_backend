@@ -12,6 +12,8 @@ import { errorHandler, errorHandler404 } from './error handling/errorHandlers'
 import RouterMedia from './routes/media'
 import RouterCategory from './routes/cateogry'
 import RouterUser from './routes/user'
+import RouterAuth from './routes/auth'
+import cookieParser from 'cookie-parser'
 
 /**
  ** ====================================
@@ -35,6 +37,7 @@ const HttpServer = new Server(app)
  ** ====================================
  */
 app.use(cors())
+app.use(cookieParser())
 app.use(bodyParser.json({ limit: '10kb' }))
 app.use(express.static('src/public'))
 
@@ -46,6 +49,7 @@ app.use(express.static('src/public'))
 app.use(`${API_ENDPOINT}/media`, RouterMedia)
 app.use(`${API_ENDPOINT}/category`, RouterCategory)
 app.use(`${API_ENDPOINT}/user`, RouterUser)
+app.use(`${API_ENDPOINT}/auth`, RouterAuth)
 
 /**
  ** ====================================

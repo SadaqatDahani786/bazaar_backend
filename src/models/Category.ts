@@ -4,10 +4,24 @@ import validator from 'validator'
 
 /**
  ** ====================================
+ ** Interface [ICategory]
+ ** ====================================
+ */
+export interface ICategory {
+    slug: string
+    name: string
+    description?: string
+    image?: ObjectId
+    parent?: ObjectId
+    created_at?: Date
+}
+
+/**
+ ** ====================================
  ** Schema [Category]
  ** ====================================
  */
-const schemaCategory = new Schema({
+const schemaCategory = new Schema<ICategory>({
     slug: {
         type: String,
         required: [true, 'A slug for a category must be provided.'],

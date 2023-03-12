@@ -71,6 +71,20 @@ export const errorHandler = (
             ).sendResponse(res)
         }
 
+        //JWT Invalid Token
+        if (err.name === 'JsonWebTokenError')
+            return new AppError(
+                `The session token is invalid. Please login again.`,
+                401
+            ).sendResponse(res)
+
+        //JWT Token Expired
+        if (err.name === 'TokenExpiredError')
+            return new AppError(
+                `The session token has expird. Please login again.`,
+                401
+            ).sendResponse(res)
+
         //Default Response
         res.status(errStatusCode).json({
             status: errStatus,

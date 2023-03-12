@@ -5,9 +5,11 @@ import {
     deleteMedia,
     getManyMedia,
     getMedia,
+    imageToMedia,
     updateMedia,
     uploadMedia,
 } from '../controllers/media'
+import { isAuthenticated, isAuthorized } from '../controllers/auth'
 
 /**
  ** ====================================
@@ -20,7 +22,13 @@ const Router = express.Router()
  ** ====================================
  ** Routes
  ** ====================================
+
+/*
+ ** **
+ ** ** ** [Admin-Access-Only]
+ ** **
  */
+Router.use(isAuthenticated, isAuthorized('admin'))
 
 //[Upload] a one or many media image files
 Router.route('/upload').post(
@@ -29,6 +37,7 @@ Router.route('/upload').post(
             name: 'images',
         },
     ]),
+    imageToMedia('images'),
     uploadMedia
 )
 
@@ -42,22 +51,12 @@ Router.route('/')
                 maxCount: 1,
             },
         ]),
+        imageToMedia('image'),
         createMedia
     )
 
 //[Retrieve] [Modify] [Remove] a media by its id
-Router.route('/:id')
-    .get(getMedia)
-    .put(
-        multerUpload.fields([
-            {
-                name: 'image',
-                maxCount: 1,
-            },
-        ]),
-        updateMedia
-    )
-    .delete(deleteMedia)
+Router.route('/:id').get(getMedia).put(updateMedia).delete(deleteMedia)
 
 /**
  ** ====================================

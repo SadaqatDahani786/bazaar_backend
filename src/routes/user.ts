@@ -1,12 +1,16 @@
 import express from 'express'
+import { isAuthenticated, isAuthorized } from '../controllers/auth'
+import { imageToMedia } from '../controllers/media'
 import {
     createUser,
     deleteUser,
     getManyUser,
     getUser,
     getUsersCountThisMonth,
+    setUserId,
     updateUser,
 } from '../controllers/user'
+import multerUpload from '../packages/multer'
 
 /**
  ** ====================================
@@ -21,14 +25,67 @@ const Router = express.Router()
  ** ====================================
  */
 
+/*
+ ** **
+ ** ** ** [Members-Access-Only]
+ ** **
+ */
+Router.use(isAuthenticated)
+
+//[Retrive] [Mofify] and [Delete] user profile
+Router.route('/me')
+    .get(setUserId, getUser)
+    .put(
+        setUserId,
+        multerUpload.fields([
+            {
+                name: 'photo',
+                maxCount: 1,
+            },
+        ]),
+        imageToMedia('photo'),
+        updateUser
+    )
+    .delete(setUserId, deleteUser)
+
+/*
+ ** **
+ ** ** ** [Admin-Access-Only]
+ ** **
+ */
+Router.use(isAuthorized('admin'))
+
 //[Retrieve] users count this month
 Router.route('/users-count-this-month').get(getUsersCountThisMonth)
 
 //[Retrieve] many user or [Create] a user
-Router.route('/').get(getManyUser).post(createUser)
+Router.route('/')
+    .get(getManyUser)
+    .post(
+        multerUpload.fields([
+            {
+                name: 'photo',
+                maxCount: 1,
+            },
+        ]),
+        imageToMedia('photo'),
+        createUser
+    )
 
 //[Retrieve] [Modify] [Remove] a user by its id
-Router.route('/:id').get(getUser).put(updateUser).delete(deleteUser)
+Router.route('/:id')
+    .get(getUser)
+    .put(
+        multerUpload.fields([
+            {
+                name: 'photo',
+                maxCount: 1,
+            },
+        ]),
+        imageToMedia('photo'),
+        updateUser
+    )
+    .delete(deleteUser)
 
 /**
  ** ====================================

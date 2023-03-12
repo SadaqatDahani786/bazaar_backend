@@ -1,13 +1,63 @@
 import { ObjectId } from 'mongodb'
-import mongoose, { Schema, model } from 'mongoose'
+import { Schema, model, Model } from 'mongoose'
 import validator from 'validator'
+import bcrypt from 'bcrypt'
+
+/**
+ ** ====================================
+ ** Interface [IUser]
+ ** ====================================
+ */
+export interface IUser {
+    name: string
+    username: string
+    email: string
+    password: string | undefined
+    password_confirm: string | undefined
+    photo?: ObjectId
+    phone_no: string
+    shipping?: {
+        addresses: [
+            {
+                title: string
+                country: string
+                state: string
+                city: string
+                label: 'home' | 'work' | 'other'
+                default_shipping_address: boolean
+            }
+        ]
+    }
+    role?: 'admin' | 'member'
+    created_at?: Date
+    password_changed_at?: Date
+    password_reset_token?: string
+    password_reset_token_expiration?: Date
+}
+
+/**
+ ** ====================================
+ ** Interface [IUserMethods]
+ ** ====================================
+ */
+interface IUserMethods {
+    comparePassword: (candidatePassword: string) => Promise<boolean>
+    isPassChangedSince: (timestamp: number) => boolean
+}
+
+/**
+ ** ====================================
+ ** Type [UserModel]
+ ** ====================================
+ */
+type UserModel = Model<IUser, typeof Object, IUserMethods>
 
 /**
  ** ====================================
  ** Schema [User]
  ** ====================================
  */
-const schemaUser = new Schema({
+const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     name: {
         type: String,
         maxlength: [200, 'Name must be 200 characters long or less.'],
@@ -44,6 +94,7 @@ const schemaUser = new Schema({
         type: String,
         maxLength: [200, 'Password must be 200 characters long or less.'],
         required: [true, 'A user must have a password.'],
+        select: false,
         trim: true,
         validator: [
             validator.isStrongPassword,
@@ -54,12 +105,8 @@ const schemaUser = new Schema({
         type: String,
         required: [true, 'Please confirm your password.'],
         validate: {
-            validator: function (passConfirm: mongoose.Schema.Types.String) {
-                //Infer the type
-                const thisObj = this as {
-                    password: mongoose.Schema.Types.String
-                }
-                return thisObj.password === passConfirm
+            validator: function (passConfirm: string) {
+                return (this as IUser).password === passConfirm
             },
             message: 'Password and password confirm mismatched.',
         },
@@ -69,15 +116,14 @@ const schemaUser = new Schema({
         ref: 'Media',
     },
     phone_no: {
-        type: Number,
-        minlength: [11, 'Phone number must have only 11 numbers in it.'],
-        maxlength: [11, 'Phone number must have only 11 numbers in it.'],
+        type: String,
         unique: true,
-        trim: true,
-        validate: [
-            validator.isMobilePhone,
-            'Please provide a valid phone number.',
-        ],
+        validate: {
+            validator: (value: string) =>
+                validator.isMobilePhone(value, 'any', { strictMode: true }),
+            message:
+                'Please provide a valid phone number that must include country code with + sign.',
+        },
     },
     shipping: {
         addresses: [
@@ -134,7 +180,82 @@ const schemaUser = new Schema({
         type: Date,
         default: Date.now(),
     },
+    password_changed_at: { type: Date },
+    password_reset_token: { type: String },
+    password_reset_token_expiration: { type: Date },
 })
+
+/**
+ ** ====================================
+ ** MIDDLEWARES [DOCUMENT]
+ ** ====================================
+ */
+
+/*
+ ** **
+ ** ** ** Hash the password before storing it in database
+ ** **
+ */
+schemaUser.pre('save', async function (next) {
+    //1) If password hashed already, don't proceed
+    if (this.isModified(this.password)) return next()
+
+    //2) Hash the password
+    this.password = await bcrypt.hash(this.password as string, 12)
+
+    //3) Don't store password confirm in database
+    this.password_confirm = undefined
+
+    //4) Call next middleware
+    next()
+})
+
+/*
+ ** **
+ ** ** ** Change password_changed_at when the password has modified
+ ** **
+ */
+schemaUser.pre('save', async function (next) {
+    //1) If document is being created for very first time, don't set password change then
+    if (!this.isModified('password') || this.isNew) {
+        return next()
+    }
+
+    //2) Set password_changed_at to current time - 1000ms
+    const thisObj = this as IUser
+    thisObj.password_changed_at = new Date(Date.now() - 1000)
+
+    //3) Call next middleware
+    next()
+})
+
+/**
+ ** ====================================
+ ** INSTANCE METHODS
+ ** ====================================
+ */
+/*
+ ** **
+ ** ** ** Compare Password
+ ** **
+ */
+schemaUser.methods.comparePassword = async function (
+    candidatePassword: string
+) {
+    return await bcrypt.compare(candidatePassword, this.password)
+}
+
+/*
+ ** **
+ ** ** ** Is Password Change Since
+ ** **
+ */
+schemaUser.methods.isPassChangedSince = function (timestamp: number) {
+    return (
+        this.password_changed_at &&
+        this.password_changed_at.getTime() > timestamp
+    )
+}
 
 /**
  ** ====================================

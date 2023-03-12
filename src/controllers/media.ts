@@ -13,6 +13,72 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 //Packages
 import QueryModifier from '../packages/QueryModifier'
 import imageSize from 'image-size'
+import { NextFunction, Request, Response } from 'express'
+
+/**
+ ** ==========================================================
+ ** MIDDLEWARES
+ ** ==========================================================
+ */
+//Store upcoming image or images as media in req object
+export const imageToMedia = (field: string) => {
+    return catchAsyncHandler(
+        async (req: Request, res: Response, next: NextFunction) => {
+            //1) Validation
+            if (!req.body[field]) return next()
+
+            //2) Promisify sizeOf method
+            const sizeOf = promisify(imageSize)
+
+            //3) If single image, else array images
+            if (req.body[field] && !Array.isArray(req.body[field])) {
+                //Dimensions
+                const uploadedFileSize = await sizeOf(
+                    global.app_dir + '/public/' + req.body[field].url
+                ).catch(() => {
+                    throw new AppError(
+                        `Please provide a valid image file in [${field}] parameter.`,
+                        400
+                    )
+                })
+
+                //Save it to the request object
+                req.media = {
+                    ...req.body[field],
+                    dimensions: {
+                        width: uploadedFileSize?.width,
+                        height: uploadedFileSize?.height,
+                    },
+                }
+            } else if (
+                Array.isArray(req.body[field]) &&
+                req.body[field].length > 0
+            ) {
+                const mediaObjects = req.body.images.map((file: File) => {
+                    //Image diemensions
+                    const uploadedFileSize = imageSize(
+                        global.app_dir + '/public/' + file.url
+                    )
+
+                    //return media object
+                    return {
+                        ...file,
+                        dimensions: {
+                            width: uploadedFileSize.width,
+                            height: uploadedFileSize.height,
+                        },
+                    }
+                })
+
+                //Save array of media into req object
+                req.media = mediaObjects
+            }
+
+            //4) Call next middleware
+            next()
+        }
+    )
+}
 
 /**
  ** ==========================================================
@@ -20,32 +86,19 @@ import imageSize from 'image-size'
  ** ==========================================================
  */
 export const uploadMedia = catchAsyncHandler(async (req, res) => {
-    //1) Validation
+    //1) Get media arr from req object
+    const mediaDocsToBeCreated = req.media
+
+    //2) Validation
     if (
-        !req.body.images ||
-        (Array.isArray(req.body.images) && req.body.images.length <= 0)
+        !mediaDocsToBeCreated ||
+        (Array.isArray(mediaDocsToBeCreated) &&
+            mediaDocsToBeCreated.length <= 0)
     )
         throw new AppError(
             'Please provided [images] paramenter, which must contains one or more image files.',
             400
         )
-
-    //2) Media docs to be created
-    const mediaDocsToBeCreated = req.body.images.map((file: File) => {
-        //Get uploaded image dimenstions with imageSize
-        const uploadedFileSize = imageSize(
-            global.app_dir + '/public/' + file.url
-        )
-
-        //Return media to be created
-        return {
-            ...file,
-            dimensions: {
-                width: uploadedFileSize.width,
-                height: uploadedFileSize.height,
-            },
-        }
-    })
 
     //3) Create a Media documents from it's model
     const DocsMedia = await Media.insertMany(mediaDocsToBeCreated)
@@ -70,44 +123,26 @@ export const uploadMedia = catchAsyncHandler(async (req, res) => {
  ** ==========================================================
  */
 export const createMedia = catchAsyncHandler(async (req, res) => {
-    //1) Validation
-    if (!req.body.image)
+    //1) Get media from req object
+    const mediaToBeCreated = req.media
+
+    //2) Validation
+    if (!mediaToBeCreated)
         throw new AppError(
             'Please provide [image] paramenter, which must contains a valid image file.',
             400
         )
 
-    //2) Get uploaded image dimenstions with imageSize
-    const sizeOf = promisify(imageSize)
-    const uploadedFileSize = await sizeOf(
-        global.app_dir + '/public/' + req.body.image?.url
-    ).catch(() => {
-        throw new AppError(
-            'Please provide a valid image file in [image] parameter.',
-            400
-        )
-    })
-
-    //3) Media to be created
-    const mediaToBeCreated = {
-        ...req.body,
-        ...req.body.image,
-        dimensions: {
-            width: uploadedFileSize?.width,
-            height: uploadedFileSize?.height,
-        },
-    }
-
-    //4) Create media
+    //3) Create media
     const DocMedia = await Media.create(mediaToBeCreated)
 
-    //5) Transormed docsMedia to have the full url for images
+    //4) Transormed docsMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia.toJSON(),
         url: makeUrlComplete(DocMedia.url, req),
     }
 
-    //6) Send a response
+    //5) Send a response
     res.status(201).json({
         status: 'success',
         data: transormedDocMedia,
@@ -203,33 +238,14 @@ export const updateMedia = catchAsyncHandler(async (req, res) => {
     //1) Get id of media file to be deleted
     const id = req.params.id
 
-    //2) Get uploaded image dimenstions with imageSize
-    const sizeOf = promisify(imageSize)
-
-    const uploadedFileSize = await sizeOf(
-        global.app_dir + '/public/' + req.body.image?.url
-    ).catch(() => {
-        if (req.body.image)
-            throw new AppError(
-                'Please provide a valid image file in [image] parameter.',
-                400
-            )
-    })
-
-    //3) Media to be updated
+    //2) Media to be updated
     const mediaToBeUpdated = {
-        ...req.body,
-        ...req.body.image,
+        title: req.body.title,
+        description: req.body.description,
+        caption: req.body.caption,
     }
 
-    if (uploadedFileSize) {
-        mediaToBeUpdated.dimensions = {
-            width: uploadedFileSize.width,
-            height: uploadedFileSize.height,
-        }
-    }
-
-    //4) Updated media document
+    //3) Updated media document
     const DocMedia = await Media.findOneAndUpdate(
         { _id: id },
         mediaToBeUpdated,
@@ -238,7 +254,7 @@ export const updateMedia = catchAsyncHandler(async (req, res) => {
         }
     )
 
-    //5) If no doc found with the id, throw error
+    //4) If no doc found with the id, throw error
     if (!DocMedia) {
         throw new AppError(
             'No media document found to be update with the id provided.',
@@ -246,13 +262,13 @@ export const updateMedia = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //6) Transormed DocMedia to have the full url for images
+    //5) Transormed DocMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia?.toJSON(),
         url: makeUrlComplete(DocMedia.url, req),
     }
 
-    //7) Send a response
+    //6) Send a response
     res.status(200).json({
         status: 'success',
         data: transormedDocMedia,
