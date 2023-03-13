@@ -1,3 +1,5 @@
+import { NextFunction, Request, Response } from 'express'
+
 //Utils
 import { promisify } from 'util'
 import makeUrlComplete from '../utils/makeUrlComplete'
@@ -13,7 +15,6 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 //Packages
 import QueryModifier from '../packages/QueryModifier'
 import imageSize from 'image-size'
-import { NextFunction, Request, Response } from 'express'
 
 /**
  ** ==========================================================

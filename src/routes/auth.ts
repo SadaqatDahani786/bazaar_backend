@@ -1,8 +1,10 @@
 import express from 'express'
 import {
+    forgotPassword,
     isAuthenticated,
     login,
     logout,
+    resetPassword,
     signup,
     updatePassword,
 } from '../controllers/auth'
@@ -38,6 +40,10 @@ Router.route('/login').post(login)
 Router.route('/logout').post(logout)
 
 Router.route('/update-password').post(isAuthenticated, updatePassword)
+
+Router.route('/forgot-password').post(forgotPassword)
+
+Router.route('/reset-password/:token').post(resetPassword)
 
 /**
  ** ====================================

@@ -1,9 +1,18 @@
+import fs from 'fs'
 import { NextFunction, Request, Response } from 'express'
+import crypto from 'crypto'
+
+//Models & types
 import User, { IUser } from '../models/User'
+import Media from '../models/Media'
+
+//Error Handling
 import AppError from '../error handling/AppError'
 import { catchAsyncHandler } from '../error handling/errorHandlers'
+
+//Packages
 import { JWT_CreateAndSendToken, JWT_VerifyToken } from '../packages/jwt'
-import Media from '../models/Media'
+import { mail } from '../packages/mailer'
 
 /**
  ** ====================================
@@ -15,7 +24,7 @@ export const signup = catchAsyncHandler(async (req, res) => {
     const userToCreate: IUser = {
         name: req.body.name,
         email: req.body.email,
-        username: req.body.password,
+        username: req.body.username,
         password: req.body.password,
         password_confirm: req.body.password_confirm,
         photo: undefined,
@@ -39,7 +48,31 @@ export const signup = catchAsyncHandler(async (req, res) => {
             500
         )
 
-    //5) Sign a token and send it in a response as cookie
+    //5) Send a welcome email
+    fs.readFile(`${global.app_dir}/views/welcome.html`, async (err, file) => {
+        if (err) throw err
+
+        //Replace placeholders
+        let emailTemplateString = file.toString()
+        emailTemplateString = emailTemplateString.replace(
+            /<==NAME==>/,
+            user.name
+        )
+        emailTemplateString = emailTemplateString.replace(
+            /<==URL==>/,
+            `${req.get('origin')}/profile`
+        )
+
+        //mail
+        await mail({
+            mail: user.email,
+            subject: 'Welcome',
+            html: emailTemplateString,
+            message: `Welcome to Bazaar, ${user.name}. We're glad to have you in our welcoming community.`,
+        })
+    })
+
+    //6) Sign a token and send it in a response as cookie
     JWT_CreateAndSendToken(user._id, res, 201)
 })
 
@@ -143,6 +176,90 @@ export const updatePassword = catchAsyncHandler(
         })
     }
 )
+
+/**
+ ** ====================================
+ ** FORGOT PASSWORD
+ ** ====================================
+ */
+export const forgotPassword = catchAsyncHandler(async (req, res) => {
+    const { email } = req.body
+
+    // 1) Find user
+    const user = await User.findOne({ email })
+    if (!user) throw new AppError('No user found with this email address.', 404)
+
+    // 2) Create token
+    const passResetToken = user.generatePassResetToken()
+
+    // 3) Save user
+    await user.save({ validateBeforeSave: false })
+
+    // 4) Send an email
+    fs.readFile(
+        `${global.app_dir}/views/password-reset.html`,
+        async (err, file) => {
+            if (err) throw err
+
+            //Replace placeholder values
+            let emailTemplateString = file.toString()
+            emailTemplateString = emailTemplateString.replace(
+                /<==URL==>/,
+                `${req.get('origin')}/reset-password/${passResetToken}`
+            )
+
+            //mail
+            await mail({
+                mail: user.email,
+                subject: 'Password Reset',
+                html: emailTemplateString,
+                message: `Forgot your password? Don't worry we got you cover.`,
+            })
+        }
+    )
+
+    // 5) Send response
+    res.status(200).json({
+        status: 'success',
+        password_reset_token:
+            process.env.NODE_ENVIRONMENT === 'development' && passResetToken,
+        password_reset_token_expiration: user.password_reset_token_expiration,
+    })
+})
+
+/**
+ ** ====================================
+ ** RESET PASSWORD
+ ** ====================================
+ */
+export const resetPassword = catchAsyncHandler(async (req, res) => {
+    //Token & Hashed Token
+    const { token } = req.params
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+
+    //Password & Confirm Password
+    const { password, password_confirm } = req.body
+    if (!password || !password_confirm)
+        throw new AppError('Please provide password and password confirm.', 400)
+
+    //Find user
+    const user = await User.findOne({ password_reset_token: hashedToken })
+    if (!user)
+        throw new AppError(
+            'Invalid token or has been expired. Please provide a valid token to reset password.',
+            400
+        )
+
+    //Update user
+    user.password = password
+    user.password_confirm = password_confirm
+    user.password_reset_token = undefined
+    user.password_reset_token_expiration = undefined
+    await user.save()
+
+    //Send response
+    JWT_CreateAndSendToken(user, res, 200)
+})
 
 /**
  ** ====================================

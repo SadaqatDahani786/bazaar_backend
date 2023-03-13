@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb'
 import { Schema, model, Model } from 'mongoose'
 import validator from 'validator'
 import bcrypt from 'bcrypt'
+import crypto from 'crypto'
 
 /**
  ** ====================================
@@ -43,6 +44,7 @@ export interface IUser {
 interface IUserMethods {
     comparePassword: (candidatePassword: string) => Promise<boolean>
     isPassChangedSince: (timestamp: number) => boolean
+    generatePassResetToken: () => string
 }
 
 /**
@@ -255,6 +257,29 @@ schemaUser.methods.isPassChangedSince = function (timestamp: number) {
         this.password_changed_at &&
         this.password_changed_at.getTime() > timestamp
     )
+}
+
+/*
+ ** **
+ ** ** ** Generate Password Reset Token
+ ** **
+ */
+schemaUser.methods.generatePassResetToken = function () {
+    //1) Create pass reset token
+    const passResetToken = crypto.randomBytes(32).toString('hex')
+
+    //2) Encrypt the token itself
+    const passResetTokenEncrypted = crypto
+        .createHash('sha256')
+        .update(passResetToken)
+        .digest('hex')
+
+    //3) Save token in database
+    this.password_reset_token = passResetTokenEncrypted
+    this.password_reset_token_expiration = Date.now() + 1000 * 60 * 60 * 24
+
+    //4) Return token
+    return passResetToken
 }
 
 /**
