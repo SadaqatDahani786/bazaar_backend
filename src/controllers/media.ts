@@ -44,18 +44,38 @@ export const imageToMedia = (field: string) => {
                 })
 
                 //Save it to the request object
-                req.media = {
-                    ...req.body[field],
-                    dimensions: {
-                        width: uploadedFileSize?.width,
-                        height: uploadedFileSize?.height,
-                    },
-                }
+                if (req.media?.length)
+                    req.media = [
+                        ...req.media,
+                        {
+                            name: field,
+                            value: {
+                                ...req.body[field],
+                                dimensions: {
+                                    width: uploadedFileSize?.width,
+                                    height: uploadedFileSize?.height,
+                                },
+                            },
+                        },
+                    ]
+                else
+                    req.media = [
+                        {
+                            name: field,
+                            value: {
+                                ...req.body[field],
+                                dimensions: {
+                                    width: uploadedFileSize?.width,
+                                    height: uploadedFileSize?.height,
+                                },
+                            },
+                        },
+                    ]
             } else if (
                 Array.isArray(req.body[field]) &&
                 req.body[field].length > 0
             ) {
-                const mediaObjects = req.body.images.map((file: File) => {
+                const mediaObjects = req.body[field].map((file: File) => {
                     //Image diemensions
                     const uploadedFileSize = imageSize(
                         global.app_dir + '/public/' + file.url
@@ -72,7 +92,21 @@ export const imageToMedia = (field: string) => {
                 })
 
                 //Save array of media into req object
-                req.media = mediaObjects
+                if (req.media?.length)
+                    req.media = [
+                        ...req.media,
+                        {
+                            name: field,
+                            value: mediaObjects,
+                        },
+                    ]
+                else
+                    req.media = [
+                        {
+                            name: field,
+                            value: mediaObjects,
+                        },
+                    ]
             }
 
             //4) Call next middleware
@@ -128,14 +162,16 @@ export const createMedia = catchAsyncHandler(async (req, res) => {
     const mediaToBeCreated = req.media
 
     //2) Validation
-    if (!mediaToBeCreated)
+    if (!mediaToBeCreated.some((m) => m.name === 'image'))
         throw new AppError(
             'Please provide [image] paramenter, which must contains a valid image file.',
             400
         )
 
     //3) Create media
-    const DocMedia = await Media.create(mediaToBeCreated)
+    const DocMedia = await Media.create(
+        mediaToBeCreated.find((m) => m.name === 'image')
+    )
 
     //4) Transormed docsMedia to have the full url for images
     const transormedDocMedia = {

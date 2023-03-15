@@ -29,8 +29,10 @@ export const createCategory = catchAsyncHandler(async (req, res) => {
     }
 
     //2) Check for image in req object, then set it
-    if (req.media) {
-        const mediaCreated = await Media.create(req.media)
+    if (req.media.some((m) => m.name === 'image')) {
+        const mediaCreated = await Media.create(
+            req.media.find((m) => m.name === 'image')
+        )
         categoryToBeCreated.image = mediaCreated._id
     }
 
@@ -185,8 +187,10 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
     }
 
     //3) Check for image in req object, then set it
-    if (req.media) {
-        const mediaCreated = await Media.create(req.media)
+    if (req.media.some((m) => m.name === 'image')) {
+        const mediaCreated = await Media.create(
+            req.media.find((m) => m.name === 'image')
+        )
         categoryToBeUpdated.image = mediaCreated._id
     }
 

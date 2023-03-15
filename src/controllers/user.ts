@@ -45,8 +45,10 @@ export const createUser = catchAsyncHandler(
         }
 
         //2) Check for image in req object, then set it
-        if (req.media) {
-            const mediaCreated = await Media.create(req.media)
+        if (req.media.some((m) => m.name === 'photo')) {
+            const mediaCreated = await Media.create(
+                req.media.find((m) => m.name === 'photo')
+            )
             userToBeCreated.photo = mediaCreated._id
         }
 
@@ -256,8 +258,10 @@ export const updateUser = catchAsyncHandler(
         }
 
         //3) Check for image in req object, then set it
-        if (req.media) {
-            const mediaCreated = await Media.create(req.media)
+        if (req.media.some((m) => m.name === 'photo')) {
+            const mediaCreated = await Media.create(
+                req.media.find((m) => m.name === 'photo')
+            )
             userToBeUpdated.photo = mediaCreated._id
         }
 

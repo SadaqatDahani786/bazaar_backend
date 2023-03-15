@@ -17,7 +17,10 @@ export declare global {
     namespace Express {
         interface Request {
             user: ObjectId
-            media: media | media[]
+            media: {
+                name: string
+                value: media | media[]
+            }[] = []
         }
     }
 }
