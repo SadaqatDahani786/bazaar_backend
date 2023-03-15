@@ -1,6 +1,7 @@
 import path from 'path'
 import express from 'express'
 import bodyParser from 'body-parser'
+import cookieParser from 'cookie-parser'
 
 import dotenv from 'dotenv'
 import cors from 'cors'
@@ -13,7 +14,7 @@ import RouterMedia from './routes/media'
 import RouterCategory from './routes/cateogry'
 import RouterUser from './routes/user'
 import RouterAuth from './routes/auth'
-import cookieParser from 'cookie-parser'
+import RouterProduct from './routes/product'
 
 /**
  ** ====================================
@@ -50,6 +51,7 @@ app.use(`${API_ENDPOINT}/media`, RouterMedia)
 app.use(`${API_ENDPOINT}/category`, RouterCategory)
 app.use(`${API_ENDPOINT}/user`, RouterUser)
 app.use(`${API_ENDPOINT}/auth`, RouterAuth)
+app.use(`${API_ENDPOINT}/product`, RouterProduct)
 
 /**
  ** ====================================
