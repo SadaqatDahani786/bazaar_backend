@@ -315,7 +315,7 @@ export const isAuthenticated = catchAsyncHandler(
  ** AUTHORIZATION
  ** ====================================
  */
-export const isAuthorized = (...authorizedRoles: ['admin' | 'member']) => {
+export const isAuthorized = (...authorizedRoles: Array<'admin' | 'member'>) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const role = req.user.role
         if (!authorizedRoles.includes(role))
