@@ -15,6 +15,7 @@ import RouterCategory from './routes/cateogry'
 import RouterUser from './routes/user'
 import RouterAuth from './routes/auth'
 import RouterProduct from './routes/product'
+import RouterReview from './routes/review'
 
 /**
  ** ====================================
@@ -52,6 +53,7 @@ app.use(`${API_ENDPOINT}/category`, RouterCategory)
 app.use(`${API_ENDPOINT}/user`, RouterUser)
 app.use(`${API_ENDPOINT}/auth`, RouterAuth)
 app.use(`${API_ENDPOINT}/product`, RouterProduct)
+app.use(`${API_ENDPOINT}/review`, RouterReview)
 
 /**
  ** ====================================
