@@ -33,7 +33,7 @@ export const signup = catchAsyncHandler(async (req, res) => {
     }
 
     //2) Check for image in req object, then set it
-    if (req.media.some((m) => m.name === 'photo')) {
+    if (req.media?.some((m) => m.name === 'photo')) {
         const mediaCreated = await Media.create(
             req.media.find((m) => m.name === 'photo')
         )

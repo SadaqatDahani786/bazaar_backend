@@ -162,7 +162,7 @@ export const createMedia = catchAsyncHandler(async (req, res) => {
     const mediaToBeCreated = req.media
 
     //2) Validation
-    if (!mediaToBeCreated.some((m) => m.name === 'image'))
+    if (!mediaToBeCreated?.some((m) => m.name === 'image'))
         throw new AppError(
             'Please provide [image] paramenter, which must contains a valid image file.',
             400
