@@ -17,6 +17,7 @@ import RouterAuth from './routes/auth'
 import RouterProduct from './routes/product'
 import RouterReview from './routes/review'
 import RouterDeal from './routes/deal'
+import RouterCart from './routes/cart'
 
 /**
  ** ====================================
@@ -56,6 +57,7 @@ app.use(`${API_ENDPOINT}/auth`, RouterAuth)
 app.use(`${API_ENDPOINT}/product`, RouterProduct)
 app.use(`${API_ENDPOINT}/review`, RouterReview)
 app.use(`${API_ENDPOINT}/deal`, RouterDeal)
+app.use(`${API_ENDPOINT}/cart`, RouterCart)
 
 /**
  ** ====================================
