@@ -28,11 +28,24 @@ export const signup = catchAsyncHandler(async (req, res) => {
         password: req.body.password,
         password_confirm: req.body.password_confirm,
         photo: undefined,
-        shipping: req.body.shipping,
+        addresses: req.body.addresses,
         phone_no: req.body.phone_no,
     }
 
-    //2) Check for image in req object, then set it
+    //2) Disallow to have multiple addresses set to default
+    if (
+        userToCreate.addresses?.length > 0 &&
+        userToCreate.addresses.filter(
+            (address) => String(address.default_address) === 'true'
+        ).length > 1
+    ) {
+        throw new AppError(
+            'Only one address at a time can be set as a default address.',
+            400
+        )
+    }
+
+    //3) Check for image in req object, then set it
     if (req.media?.some((m) => m.name === 'photo')) {
         const mediaCreated = await Media.create(
             req.media.find((m) => m.name === 'photo')
@@ -40,17 +53,18 @@ export const signup = catchAsyncHandler(async (req, res) => {
         userToCreate.photo = mediaCreated._id
     }
 
-    //3) Create new user
+    //4) Create new user
     const user = await User.create(userToCreate)
 
-    //4) Validation
-    if (!user)
+    //5) Validation
+    if (!user) {
         throw new AppError(
             'Signup failed for some reasons, please try again.',
             500
         )
+    }
 
-    //5) Send a welcome email
+    //6) Send a welcome email
     fs.readFile(`${global.app_dir}/views/welcome.html`, async (err, file) => {
         if (err) throw err
 
@@ -74,7 +88,7 @@ export const signup = catchAsyncHandler(async (req, res) => {
         })
     })
 
-    //6) Sign a token and send it in a response as cookie
+    //7) Sign a token and send it in a response as cookie
     JWT_CreateAndSendToken(user._id, res, 201)
 })
 

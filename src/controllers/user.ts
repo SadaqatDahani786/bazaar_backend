@@ -40,11 +40,24 @@ export const createUser = catchAsyncHandler(
             password: req.body.password,
             password_confirm: req.body.password_confirm,
             photo: undefined,
-            shipping: req.body.shipping,
+            addresses: req.body.addresses,
             phone_no: req.body.phone_no,
         }
 
-        //2) Check for image in req object, then set it
+        //2) Disallow to have multiple addresses set to default
+        if (
+            userToBeCreated.addresses?.length > 0 &&
+            userToBeCreated.addresses.filter(
+                (address) => String(address.default_address) === 'true'
+            ).length > 1
+        ) {
+            throw new AppError(
+                'Only one address at a time can be set as a default address.',
+                400
+            )
+        }
+
+        //3) Check for image in req object, then set it
         if (req.media?.some((m) => m.name === 'photo')) {
             const mediaCreated = await Media.create(
                 req.media.find((m) => m.name === 'photo')
@@ -52,21 +65,21 @@ export const createUser = catchAsyncHandler(
             userToBeCreated.photo = mediaCreated._id
         }
 
-        //3) Create user
+        //4) Create user
         const DocUser = await User.create(userToBeCreated)
 
-        //4) Populate fields
+        //5) Populate fields
         await DocUser.populate({
             path: 'photo',
             select: { _id: 0, url: 1, title: 1 },
         })
 
-        //5) Make url complete
+        //6) Make url complete
         if (DocUser?.photo && DocUser.photo instanceof Media) {
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
         }
 
-        //6) Send a response
+        //7) Send a response
         res.status(201).json({
             status: 'success',
             data: DocUser,
@@ -253,11 +266,24 @@ export const updateUser = catchAsyncHandler(
             password: req.body.password,
             password_confirm: req.body.password_confirm,
             photo: undefined,
-            shipping: req.body.shipping,
+            addresses: req.body.addresses,
             phone_no: req.body.phone_no,
         }
 
-        //3) Check for image in req object, then set it
+        //3) Disallow to have multiple addresses set to default
+        if (
+            userToBeUpdated.addresses?.length > 0 &&
+            userToBeUpdated.addresses.filter(
+                (address) => String(address.default_address) === 'true'
+            ).length > 1
+        ) {
+            throw new AppError(
+                'Only one address at a time can be set as a default address.',
+                400
+            )
+        }
+
+        //4) Check for image in req object, then set it
         if (req.media?.some((m) => m.name === 'photo')) {
             const mediaCreated = await Media.create(
                 req.media.find((m) => m.name === 'photo')
@@ -265,7 +291,7 @@ export const updateUser = catchAsyncHandler(
             userToBeUpdated.photo = mediaCreated._id
         }
 
-        //4) Updated user document
+        //5) Updated user document
         const DocUser = await User.findOneAndUpdate(
             { _id: id },
             userToBeUpdated,
@@ -277,7 +303,7 @@ export const updateUser = catchAsyncHandler(
             select: { url: 1, _id: 0, name: 1 },
         })
 
-        //5) If no doc found with the id, throw error
+        //6) If no doc found with the id, throw error
         if (!DocUser) {
             throw new AppError(
                 'No user document found to be update with the id provided.',
@@ -285,12 +311,12 @@ export const updateUser = catchAsyncHandler(
             )
         }
 
-        //6) Transormed DocUser to have the full url for images
+        //7) Transormed DocUser to have the full url for images
         if (DocUser.photo instanceof Media) {
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
         }
 
-        //7) Send a response
+        //8) Send a response
         res.status(200).json({
             status: 'success',
             data: DocUser,

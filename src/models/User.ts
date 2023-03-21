@@ -17,18 +17,20 @@ export interface IUser {
     password_confirm: string | undefined
     photo?: ObjectId
     phone_no: string
-    shipping?: {
-        addresses: [
-            {
-                title: string
-                country: string
-                state: string
-                city: string
-                label: 'home' | 'work' | 'other'
-                default_shipping_address: boolean
-            }
-        ]
-    }
+    addresses: [
+        {
+            full_name: string
+            phone_no: string
+            country: string
+            state: string
+            city: string
+            zip_code: string
+            street_address: string
+            landmark?: string
+            property_type: 'house' | 'apartment' | 'business' | 'other'
+            default_address?: boolean
+        }
+    ]
     role?: 'admin' | 'member'
     created_at?: Date
     password_changed_at?: Date
@@ -62,7 +64,7 @@ type UserModel = Model<IUser, typeof Object, IUserMethods>
 const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     name: {
         type: String,
-        maxlength: [200, 'Name must be 200 characters long or less.'],
+        maxlength: [60, 'Name must be 60 characters long or less.'],
         required: [true, 'A user must have a name.'],
         trim: true,
         validate: {
@@ -75,18 +77,23 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     },
     username: {
         type: String,
-        maxlength: [200, 'Username must be 200 characters long or less.'],
+        maxlength: [60, 'Username must be 60 characters long or less.'],
         required: [true, 'A user must have a username.'],
         unique: true,
         trim: true,
-        validate: [
-            validator.isAlphanumeric,
-            'Username must only contain letters and numbers, no special characters are allowed.',
-        ],
+        validate: {
+            validator: function (username: string) {
+                return validator.isAlphanumeric(username, 'en-US', {
+                    ignore: /\s|-|_/g,
+                })
+            },
+            message:
+                'Username must only contain letters and numbers. No special characters are allowed except dash and hyphen.',
+        },
     },
     email: {
         type: String,
-        maxlength: [200, 'Email must be 200 characters long or less.'],
+        maxlength: [60, 'Email must be 60 characters long or less.'],
         required: [true, 'A user must have an email address.'],
         unique: true,
         trim: true,
@@ -94,7 +101,7 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     },
     password: {
         type: String,
-        maxLength: [200, 'Password must be 200 characters long or less.'],
+        maxLength: [60, 'Password must be 60 characters long or less.'],
         required: [true, 'A user must have a password.'],
         select: false,
         trim: true,
@@ -127,52 +134,116 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
                 'Please provide a valid phone number that must include country code with + sign.',
         },
     },
-    shipping: {
-        addresses: [
-            {
-                title: {
-                    type: String,
-                    maxlength: [
-                        200,
-                        'Addess title must be 200 characters long or less.',
-                    ],
-                    trim: true,
-                },
-                country: {
-                    type: String,
-                    maxlength: [
-                        200,
-                        'Country name must be 200 characters long or less.',
-                    ],
-                    trim: true,
-                },
-                state: {
-                    type: String,
-                    maxlength: [
-                        200,
-                        'State name must be 200 characters long or less.',
-                    ],
-                    trim: true,
-                },
-                city: {
-                    type: String,
-                    maxlength: [
-                        200,
-                        'City name must be 200 characters long or less.',
-                    ],
-                    trim: true,
-                },
-                label: {
-                    type: String,
-                    enum: ['home', 'work', 'other'],
-                },
-                default_shipping_address: {
-                    type: Boolean,
-                    default: false,
+    addresses: [
+        {
+            full_name: {
+                type: String,
+                required: [true, 'Must provide "full_name" for an address.'],
+                maxlength: [
+                    60,
+                    'Full name must be 60 characters long or less.',
+                ],
+                trim: true,
+                validate: {
+                    validator: function (full_name: string) {
+                        return validator.isAlpha(full_name, 'en-US', {
+                            ignore: ' ',
+                        })
+                    },
+                    message:
+                        'Full name must only contain letters or whitespaces. No special characters are allowed.',
                 },
             },
-        ],
-    },
+            phone_no: {
+                type: String,
+                unique: true,
+                validate: {
+                    validator: (value: string) =>
+                        validator.isMobilePhone(value, 'any', {
+                            strictMode: true,
+                        }),
+                    message:
+                        'Please provide a valid phone number that must include country code with + sign.',
+                },
+            },
+            country: {
+                type: String,
+                required: [true, 'Must provide "country" for an address.'],
+                maxlength: [
+                    60,
+                    'Country name must be 60 characters long or less.',
+                ],
+                trim: true,
+                validate: {
+                    validator: function (full_name: string) {
+                        return validator.isAlpha(full_name, 'en-US', {
+                            ignore: ' ',
+                        })
+                    },
+                    message:
+                        'Country name must only contains letters or whitespaces. No specail characters are allowed.',
+                },
+            },
+            state: {
+                type: String,
+                required: [true, 'Must provide "state" for an address.'],
+                maxlength: [
+                    60,
+                    'State name must be 60 characters long or less.',
+                ],
+                trim: true,
+                validate: {
+                    validator: function (full_name: string) {
+                        return validator.isAlpha(full_name, 'en-US', {
+                            ignore: ' ',
+                        })
+                    },
+                    message:
+                        'State name must only contains letters or whitespaces. No specail characters are allowed.',
+                },
+            },
+            city: {
+                type: String,
+                required: [true, 'Must provide "city" for an address.'],
+                maxlength: [
+                    60,
+                    'City name must be 60 characters long or less.',
+                ],
+                trim: true,
+                validate: {
+                    validator: function (full_name: string) {
+                        return validator.isAlpha(full_name, 'en-US', {
+                            ignore: ' ',
+                        })
+                    },
+                    message:
+                        'City name must only contains letters or whitespaces. No specail characters are allowed.',
+                },
+            },
+            zip_code: {
+                type: String,
+                required: [true, 'Must provide "zip_code" for an address.'],
+                validate: {
+                    validator: function (zip: string) {
+                        return validator.isPostalCode(zip, 'US')
+                    },
+                    message: 'Must provide a valid zip code for an address.',
+                },
+            },
+            property_type: {
+                type: String,
+                enum: ['house', 'apartment', 'business', 'other'],
+                required: [
+                    true,
+                    'Must provide "property_type" of one of these values: "house", "apartment", "business" or "other".',
+                ],
+            },
+            default_address: {
+                type: Boolean,
+                default: false,
+            },
+        },
+    ],
     role: {
         type: String,
         enum: ['admin', 'member'],
