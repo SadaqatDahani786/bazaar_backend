@@ -1,7 +1,5 @@
 import express from 'express'
-import multerUpload from '../packages/multer'
 import { isAuthenticated, isAuthorized } from '../controllers/auth'
-import { imageToMedia } from '../controllers/media'
 import {
     addItemInCart,
     deleteCart,
@@ -26,7 +24,7 @@ const Router = express.Router()
 
 /*
  ** **
- ** ** ** MEMBER
+ ** ** ** [Member-Access-Only]
  ** **
  */
 Router.use(isAuthenticated)
@@ -42,7 +40,7 @@ Router.route('/remove-item').post(isAuthenticated, removeItemFromCart)
 
 /*
  ** **
- ** ** ** ADMIN
+ ** ** ** [Admin-Access-Only]
  ** **
  */
 Router.use(isAuthorized('admin', 'member'))
