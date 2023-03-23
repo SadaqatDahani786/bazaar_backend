@@ -1,3 +1,10 @@
+import { IUser } from '../models/User'
+
+/**
+ ** ==========================================================
+ ** Type [media]
+ ** ==========================================================
+ */
 type media = {
     original_name: string
     filename: string
@@ -9,6 +16,11 @@ type media = {
     }
 }
 
+/**
+ ** ==========================================================
+ ** Namespace - Global
+ ** ==========================================================
+ */
 /* eslint-disable no-var */
 export declare global {
     declare namespace globalThis {
@@ -16,7 +28,7 @@ export declare global {
     }
     namespace Express {
         interface Request {
-            user: ObjectId
+            user: IUser
             media: {
                 name: string
                 value: media | media[]

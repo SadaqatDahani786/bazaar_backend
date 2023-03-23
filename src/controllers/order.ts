@@ -18,7 +18,8 @@ import QueryModifier from '../packages/QueryModifier'
  */
 //Sets the customer in query equal to user id from user obj stored in req
 export const setUserId = (req: Request, res: Response, next: NextFunction) => {
-    req.query.customer = req.user._id
+    if (req.user._id) req.query.customer = req.user._id.toString()
+
     next()
 }
 

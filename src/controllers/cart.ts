@@ -22,7 +22,8 @@ import QueryModifier from '../packages/QueryModifier'
 //Set param id to currently authenticated user id
 export const setParamIdToAuthUserId = catchAsyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-        req.query.owner = req.user._id
+        if (req.user._id) req.query.owner = req.user._id.toString()
+
         next()
     }
 )

@@ -1,6 +1,6 @@
 import { Response } from 'express'
-import { ObjectId } from 'mongodb'
 import JWT from 'jsonwebtoken'
+import { ObjectId } from 'mongodb'
 
 /**
  ** ====================================
@@ -19,12 +19,12 @@ export const JWT_CreateToken = (payload: string) => {
  ** ====================================
  */
 export const JWT_CreateAndSendToken = (
-    user: { _id: ObjectId },
+    user: ObjectId,
     res: Response,
     statusCode: number
 ) => {
     // 1) Create Token
-    const JWT_token = JWT_CreateToken(user._id.toString())
+    const JWT_token = JWT_CreateToken(user.toString())
 
     // 2) Create Cookie
     res.cookie('jwt', JWT_token, {
@@ -46,7 +46,7 @@ export const JWT_CreateAndSendToken = (
         status: 'success',
         jwt: process.env.NODE_ENV === 'production' ? undefined : JWT_token,
         data: {
-            user: user._id,
+            user: user,
         },
     })
 }

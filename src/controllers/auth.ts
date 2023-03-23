@@ -274,7 +274,7 @@ export const resetPassword = catchAsyncHandler(async (req, res) => {
     await user.save()
 
     //Send response
-    JWT_CreateAndSendToken(user, res, 200)
+    JWT_CreateAndSendToken(user._id, res, 200)
 })
 
 /**
@@ -306,20 +306,26 @@ export const isAuthenticated = catchAsyncHandler(
             )
 
         // 3) Check if user still exist to who the token was issued
-        const user = await User.findById(decodedToken.payload)
-        req.user = user
+        const user = await User.findById(
+            decodedToken.payload,
+            {},
+            { lean: true }
+        )
         if (!user)
             throw new AppError(
                 'User no longer exist, please login again as a different user.',
                 404
             )
 
-        // 4) Check if user's pass hasn't changed since the token was issued
+        // 4) Save user to req object, so next middleware have access to it
+        req.user = user
+
+        // 5) Check if user's pass hasn't changed since the token was issued
         const isPassChanged = user.isPassChangedSince(decodedToken.iat * 1000)
         if (isPassChanged)
             throw new AppError('Session has expired. Please login again.', 401)
 
-        // 5) Authentication successfull - User can proceed now with request
+        // 6) Authentication successfull - User can proceed now with request
         next()
     }
 )
@@ -332,7 +338,7 @@ export const isAuthenticated = catchAsyncHandler(
 export const isAuthorized = (...authorizedRoles: Array<'admin' | 'member'>) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const role = req.user.role
-        if (!authorizedRoles.includes(role))
+        if (!role || !authorizedRoles.includes(role))
             throw new AppError(
                 "Unauthorized, you don't have priveledge to access this route.",
                 403

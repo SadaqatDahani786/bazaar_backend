@@ -21,7 +21,8 @@ import { NextFunction, Request, Response } from 'express'
  */
 //Sets the user id in params from user obj stored in req
 export const setUserId = (req: Request, res: Response, next: NextFunction) => {
-    req.params.id = req.user._id
+    if (req.user._id) req.params.id = req.user._id.toString()
+
     next()
 }
 
