@@ -32,20 +32,33 @@ export const signup = catchAsyncHandler(async (req, res) => {
         phone_no: req.body.phone_no,
     }
 
-    //2) Disallow to have multiple addresses set to default
+    //2) Disallow to have multiple billing address set to default
     if (
         userToCreate.addresses?.length > 0 &&
         userToCreate.addresses.filter(
-            (address) => String(address.default_address) === 'true'
+            (address) => String(address.default_billing_address) === 'true'
         ).length > 1
     ) {
         throw new AppError(
-            'Only one address at a time can be set as a default address.',
+            'Only one billing address can be set as a default billing address.',
             400
         )
     }
 
-    //3) Check for image in req object, then set it
+    //3) Disallow to have multiple shipping address set to default
+    if (
+        userToCreate.addresses?.length > 0 &&
+        userToCreate.addresses.filter(
+            (address) => String(address.default_shipping_address) === 'true'
+        ).length > 1
+    ) {
+        throw new AppError(
+            'Only one shipping address can be set as a default shipping address.',
+            400
+        )
+    }
+
+    //4) Check for image in req object, then set it
     if (req.media?.some((m) => m.name === 'photo')) {
         const mediaCreated = await Media.create(
             req.media.find((m) => m.name === 'photo')
@@ -53,10 +66,10 @@ export const signup = catchAsyncHandler(async (req, res) => {
         userToCreate.photo = mediaCreated._id
     }
 
-    //4) Create new user
+    //5) Create new user
     const user = await User.create(userToCreate)
 
-    //5) Validation
+    //6) Validation
     if (!user) {
         throw new AppError(
             'Signup failed for some reasons, please try again.',
@@ -64,7 +77,7 @@ export const signup = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //6) Send a welcome email
+    //7) Send a welcome email
     fs.readFile(`${global.app_dir}/views/welcome.html`, async (err, file) => {
         if (err) throw err
 
@@ -88,7 +101,7 @@ export const signup = catchAsyncHandler(async (req, res) => {
         })
     })
 
-    //7) Sign a token and send it in a response as cookie
+    //8) Sign a token and send it in a response as cookie
     JWT_CreateAndSendToken(user._id, res, 201)
 })
 
@@ -306,11 +319,7 @@ export const isAuthenticated = catchAsyncHandler(
             )
 
         // 3) Check if user still exist to who the token was issued
-        const user = await User.findById(
-            decodedToken.payload,
-            {},
-            { lean: true }
-        )
+        const user = await User.findById(decodedToken.payload)
         if (!user)
             throw new AppError(
                 'User no longer exist, please login again as a different user.',

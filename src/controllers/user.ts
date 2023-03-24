@@ -45,20 +45,33 @@ export const createUser = catchAsyncHandler(
             phone_no: req.body.phone_no,
         }
 
-        //2) Disallow to have multiple addresses set to default
+        //2) Disallow to have multiple billing address set to default
         if (
             userToBeCreated.addresses?.length > 0 &&
             userToBeCreated.addresses.filter(
-                (address) => String(address.default_address) === 'true'
+                (address) => String(address.default_billing_address) === 'true'
             ).length > 1
         ) {
             throw new AppError(
-                'Only one address at a time can be set as a default address.',
+                'Only one billing address can be set as a default billing address.',
                 400
             )
         }
 
-        //3) Check for image in req object, then set it
+        //3) Disallow to have multiple shipping address set to default
+        if (
+            userToBeCreated.addresses?.length > 0 &&
+            userToBeCreated.addresses.filter(
+                (address) => String(address.default_shipping_address) === 'true'
+            ).length > 1
+        ) {
+            throw new AppError(
+                'Only one shipping address can be set as a default shipping address.',
+                400
+            )
+        }
+
+        //4) Check for image in req object, then set it
         if (req.media?.some((m) => m.name === 'photo')) {
             const mediaCreated = await Media.create(
                 req.media.find((m) => m.name === 'photo')
@@ -66,21 +79,21 @@ export const createUser = catchAsyncHandler(
             userToBeCreated.photo = mediaCreated._id
         }
 
-        //4) Create user
+        //5) Create user
         const DocUser = await User.create(userToBeCreated)
 
-        //5) Populate fields
+        //6) Populate fields
         await DocUser.populate({
             path: 'photo',
             select: { _id: 0, url: 1, title: 1 },
         })
 
-        //6) Make url complete
+        //7) Make url complete
         if (DocUser?.photo && DocUser.photo instanceof Media) {
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
         }
 
-        //7) Send a response
+        //8) Send a response
         res.status(201).json({
             status: 'success',
             data: DocUser,
@@ -271,15 +284,28 @@ export const updateUser = catchAsyncHandler(
             phone_no: req.body.phone_no,
         }
 
-        //3) Disallow to have multiple addresses set to default
+        //2) Disallow to have multiple billing address set to default
         if (
             userToBeUpdated.addresses?.length > 0 &&
             userToBeUpdated.addresses.filter(
-                (address) => String(address.default_address) === 'true'
+                (address) => String(address.default_billing_address) === 'true'
             ).length > 1
         ) {
             throw new AppError(
-                'Only one address at a time can be set as a default address.',
+                'Only one billing address can be set as a default billing address.',
+                400
+            )
+        }
+
+        //3) Disallow to have multiple shipping address set to default
+        if (
+            userToBeUpdated.addresses?.length > 0 &&
+            userToBeUpdated.addresses.filter(
+                (address) => String(address.default_shipping_address) === 'true'
+            ).length > 1
+        ) {
+            throw new AppError(
+                'Only one shipping address can be set as a default shipping address.',
                 400
             )
         }
@@ -298,6 +324,7 @@ export const updateUser = catchAsyncHandler(
             userToBeUpdated,
             {
                 new: true,
+                runValidators: true,
             }
         ).populate({
             path: 'photo',

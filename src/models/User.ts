@@ -20,6 +20,7 @@ export interface IUser {
     phone_no: string
     addresses: [
         {
+            _id?: ObjectId
             full_name: string
             phone_no: string
             country: string
@@ -29,7 +30,8 @@ export interface IUser {
             street_address: string
             landmark?: string
             property_type: 'house' | 'apartment' | 'business' | 'other'
-            default_address?: boolean
+            default_billing_address?: boolean
+            default_shipping_address?: boolean
         }
     ]
     role?: 'admin' | 'member'
@@ -235,7 +237,11 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     addresses: [
         {
             ...subSchemaUserAddress,
-            default_address: {
+            default_billing_address: {
+                type: Boolean,
+                default: false,
+            },
+            default_shipping_address: {
                 type: Boolean,
                 default: false,
             },
