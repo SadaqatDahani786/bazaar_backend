@@ -37,7 +37,7 @@ Router.route('/my-orders').get(setUserId, getManyOrder)
  ** ** ** [Admin-Access-Only]
  ** **
  */
-Router.use(isAuthorized('admin', 'member'))
+Router.use(isAuthorized('admin'))
 
 //[Retrieve] many order or [Create] a order
 Router.route('/').get(getManyOrder).post(createOrder)
