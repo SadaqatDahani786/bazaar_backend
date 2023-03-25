@@ -19,6 +19,10 @@ import RouterReview from './routes/review'
 import RouterDeal from './routes/deal'
 import RouterCart from './routes/cart'
 import RouterOrder from './routes/order'
+import RouterCheckout from './routes/checkout'
+
+//Controllers
+import { checkoutSuccessStripeWebhook } from './controllers/checkout'
 
 /**
  ** ====================================
@@ -35,6 +39,16 @@ const API_ENDPOINT = '/api/v1'
 //Init
 const app = express()
 const HttpServer = new Server(app)
+
+/**
+ ** ====================================
+ ** WEBHOOKS
+ ** ====================================
+ */
+app.route(`${API_ENDPOINT}/checkout/success-stripe-webhook`).post(
+    express.raw({ limit: '10kb', type: 'application/json' }),
+    checkoutSuccessStripeWebhook
+)
 
 /**
  ** ====================================
@@ -60,6 +74,7 @@ app.use(`${API_ENDPOINT}/review`, RouterReview)
 app.use(`${API_ENDPOINT}/deal`, RouterDeal)
 app.use(`${API_ENDPOINT}/cart`, RouterCart)
 app.use(`${API_ENDPOINT}/order`, RouterOrder)
+app.use(`${API_ENDPOINT}/checkout`, RouterCheckout)
 
 /**
  ** ====================================
