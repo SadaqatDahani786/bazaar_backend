@@ -162,6 +162,107 @@ export const getManyOrder = catchAsyncHandler(
 
 /**
  ** ==========================================================
+ ** getTotalOrdersCount - Get the count of total orders
+ ** ==========================================================
+ */
+export const getTotalOrdersCount = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get count of total number of orders
+        const OrdersCount = await Order.aggregate([
+            {
+                $count: 'orders_count',
+            },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                total_orders_count: OrdersCount[0].orders_count,
+            },
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getTotalSales - Get the tatal sales
+ ** ==========================================================
+ */
+export const getTotalSales = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Calc total sales via aggregation
+        const TotalSales = await Order.aggregate([
+            {
+                $group: { _id: null, income: { $sum: '$billing.paid_amount' } },
+            },
+            { $project: { _id: 0, income: 1 } },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                total_sales: TotalSales[0].income,
+            },
+        })
+    }
+)
+
+/**
+ ** ====================================
+ ** GET SALES IN MONTHS OF YEAR
+ ** ====================================
+ */
+export const getSalesInMonthsOfYear = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get Date
+        const year = req.params.year
+            ? req.params.year
+            : new Date(Date.now()).getFullYear()
+        const dateYearStart = new Date(`${year}-01-01`)
+
+        //2) Get sales in months of year by aggregation
+        const SalesInMonthsOfYear = await Order.aggregate([
+            {
+                $match: { created_at: { $gte: dateYearStart } },
+            },
+            {
+                $group: {
+                    _id: { $month: '$created_at' },
+                    sales: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { _id: 1 },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    month: '$_id',
+                    sales: 1,
+                },
+            },
+        ])
+
+        //3) Transform Sales
+        const transformedSales = SalesInMonthsOfYear.map((doc) => ({
+            ...doc,
+            month: new Date(`2022-${doc.month}-01`).toLocaleString('default', {
+                month: 'short',
+            }),
+        }))
+
+        //4) Send Response
+        res.status(200).json({
+            status: 'success',
+            data: transformedSales,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
  ** updateOrder - Update a single order
  ** ==========================================================
  */

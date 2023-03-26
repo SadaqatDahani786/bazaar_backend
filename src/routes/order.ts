@@ -5,6 +5,9 @@ import {
     deleteOrder,
     getManyOrder,
     getOrder,
+    getSalesInMonthsOfYear,
+    getTotalOrdersCount,
+    getTotalSales,
     setUserId,
     updateOrder,
 } from '../controllers/order'
@@ -38,6 +41,15 @@ Router.route('/my-orders').get(setUserId, getManyOrder)
  ** **
  */
 Router.use(isAuthorized('admin'))
+
+//[Retrieve] total sales
+Router.route('/total-sales').get(getTotalSales)
+
+//[Retrieve] total sales summary
+Router.route('/sales-in-months-of-year/:year').get(getSalesInMonthsOfYear)
+
+//[Retrieve] total numbers of orders count
+Router.route('/total-orders-count').get(getTotalOrdersCount)
 
 //[Retrieve] many order or [Create] a order
 Router.route('/').get(getManyOrder).post(createOrder)

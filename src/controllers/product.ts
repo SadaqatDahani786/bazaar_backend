@@ -280,6 +280,30 @@ export const getManyProduct = catchAsyncHandler(
 
 /**
  ** ==========================================================
+ ** getTotalProductsCount - Get the count of total products
+ ** ==========================================================
+ */
+export const getTotalProductsCount = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get count of total number of products
+        const ProductsCount = await Product.aggregate([
+            {
+                $count: 'products_count',
+            },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                total_products_count: ProductsCount[0].products_count,
+            },
+        })
+    }
+)
+
+/**
+ ** ==========================================================
  ** updateProduct - Update a single product
  ** ==========================================================
  */

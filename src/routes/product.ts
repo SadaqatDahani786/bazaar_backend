@@ -7,6 +7,7 @@ import {
     deleteProduct,
     getManyProduct,
     getProduct,
+    getTotalProductsCount,
     updateProduct,
 } from '../controllers/product'
 
@@ -22,6 +23,13 @@ const Router = express.Router()
  ** Routes
  ** ====================================
  */
+
+//[Retrieve] total products count
+Router.route('/total-products-count').get(
+    isAuthenticated,
+    isAuthorized('admin'),
+    getTotalProductsCount
+)
 
 //[Retrieve] many product or [Create] a product
 Router.route('/')

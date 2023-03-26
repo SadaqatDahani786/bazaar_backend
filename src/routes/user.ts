@@ -5,6 +5,7 @@ import {
     createUser,
     deleteUser,
     getManyUser,
+    getTotalusersCount,
     getUser,
     getUsersCountThisMonth,
     setUserId,
@@ -54,6 +55,9 @@ Router.route('/me')
  ** **
  */
 Router.use(isAuthorized('admin'))
+
+//[Retrieve] total users count
+Router.route('/total-users-count').get(getTotalusersCount)
 
 //[Retrieve] users count this month
 Router.route('/users-count-this-month').get(getUsersCountThisMonth)

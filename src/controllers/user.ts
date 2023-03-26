@@ -264,6 +264,30 @@ export const getUsersCountThisMonth = catchAsyncHandler(
 
 /**
  ** ==========================================================
+ ** getTotalUsersCount - Get the count of total users
+ ** ==========================================================
+ */
+export const getTotalusersCount = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get count of total number of users
+        const usersCount = await User.aggregate([
+            {
+                $count: 'users_count',
+            },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                total_users_count: usersCount[0].users_count,
+            },
+        })
+    }
+)
+
+/**
+ ** ==========================================================
  ** updateUser - Update a single user
  ** ==========================================================
  */
