@@ -159,19 +159,24 @@ export const uploadMedia = catchAsyncHandler(async (req, res) => {
  */
 export const createMedia = catchAsyncHandler(async (req, res) => {
     //1) Get media from req object
-    const mediaToBeCreated = req.media
+    const mediaToBeCreated = {
+        title: req.body.title,
+        description: req.body.description,
+        caption: req.body.description,
+    }
 
     //2) Validation
-    if (!mediaToBeCreated?.some((m) => m.name === 'image'))
+    if (!req.media?.some((m) => m.name === 'image'))
         throw new AppError(
             'Please provide [image] paramenter, which must contains a valid image file.',
             400
         )
 
     //3) Create media
-    const DocMedia = await Media.create(
-        mediaToBeCreated.find((m) => m.name === 'image')
-    )
+    const DocMedia = await Media.create({
+        ...req.media.find((m) => m.name === 'image')?.value,
+        ...mediaToBeCreated,
+    })
 
     //4) Transormed docsMedia to have the full url for images
     const transormedDocMedia = {
