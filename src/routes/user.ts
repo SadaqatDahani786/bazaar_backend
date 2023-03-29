@@ -2,6 +2,8 @@ import express from 'express'
 import { isAuthenticated, isAuthorized } from '../controllers/auth'
 import { imageToMedia } from '../controllers/media'
 import {
+    addItemToMyHistory,
+    clearMyHistory,
     createUser,
     deleteUser,
     getManyUser,
@@ -32,6 +34,12 @@ const Router = express.Router()
  ** **
  */
 Router.use(isAuthenticated)
+
+//[Add] add item to my history
+Router.route('/add-item-to-my-history/:prodId').put(addItemToMyHistory)
+
+//[Clear] my history
+Router.route('/clear-my-history').delete(clearMyHistory)
 
 //[Retrive] [Mofify] and [Delete] user profile
 Router.route('/me')

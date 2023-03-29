@@ -4,6 +4,7 @@ import { isToPopulate } from '../utils/isToPopulate'
 
 //Models
 import Media from '../models/Media'
+import Product from '../models/Product'
 import User, { IUser } from '../models/User'
 
 //Error Handling
@@ -121,6 +122,30 @@ export const getUser = catchAsyncHandler(
                 select: { _id: 0, url: 1, title: 1 },
             })
         }
+        if (isToPopulate('history', req)) {
+            query.populate({
+                path: 'history.product',
+                model: 'Product',
+                select: {
+                    _id: 1,
+                    title: 1,
+                    description: 1,
+                    price: 1,
+                    image: 1,
+                    staff_picked: 1,
+                    categories: 1,
+                },
+                populate: {
+                    path: 'image',
+                    model: 'Media',
+                    select: {
+                        _id: 0,
+                        title: 1,
+                        url: 1,
+                    },
+                },
+            })
+        }
 
         //4) Apply query modifiers to query
         const QueryModfier = new QueryModifier<typeof query>(
@@ -142,7 +167,22 @@ export const getUser = catchAsyncHandler(
         if (DocUser.photo && DocUser.photo instanceof Media)
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
 
-        //8) Send a response
+        //8) Transormed DocUser to have the full url for product image
+        if (DocUser.history)
+            DocUser.history = DocUser.history?.map((prod) => {
+                if (
+                    prod.product instanceof Product &&
+                    prod.product.image instanceof Media
+                ) {
+                    prod.product.image.url = makeUrlComplete(
+                        prod.product.image.url,
+                        req
+                    )
+                }
+                return prod
+            })
+
+        //9) Send a response
         res.status(200).json({
             status: 'sucess',
             data: DocUser,
@@ -167,6 +207,30 @@ export const getManyUser = catchAsyncHandler(
                 select: { _id: 0, url: 1, title: 1 },
             })
         }
+        if (isToPopulate('history', req)) {
+            query.populate({
+                path: 'history.product',
+                model: 'Product',
+                select: {
+                    _id: 1,
+                    title: 1,
+                    description: 1,
+                    price: 1,
+                    image: 1,
+                    staff_picked: 1,
+                    categories: 1,
+                },
+                populate: {
+                    path: 'image',
+                    model: 'Media',
+                    select: {
+                        _id: 0,
+                        title: 1,
+                        url: 1,
+                    },
+                },
+            })
+        }
 
         //3) Apply query modifiers to query
         const QueryModfier = new QueryModifier<typeof query>(query, req.query)
@@ -180,8 +244,24 @@ export const getManyUser = catchAsyncHandler(
 
         //5) Transormed DocsUser to have the full url for images
         const transormedDocsUser = DocsUser.map((user) => {
+            //=> User profile picture
             if (user?.photo instanceof Media)
                 user.photo.url = makeUrlComplete(user.photo.url, req)
+
+            //=> Product image
+            if (user.history)
+                user.history = user.history?.map((prod) => {
+                    if (
+                        prod.product instanceof Product &&
+                        prod.product.image instanceof Media
+                    ) {
+                        prod.product.image.url = makeUrlComplete(
+                            prod.product.image.url,
+                            req
+                        )
+                    }
+                    return prod
+                })
             return user
         })
 
@@ -283,6 +363,55 @@ export const getTotalusersCount = catchAsyncHandler(
                 total_users_count: usersCount[0].users_count,
             },
         })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** addItemToMyHistory - Add item to my history
+ ** ==========================================================
+ */
+export const addItemToMyHistory = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get prod if from params
+        const prodId = req.params.prodId
+
+        //2) Find and update only date, if already exist
+        let DocUser = await User.findOneAndUpdate(
+            { _id: req.user._id, 'history.product': prodId },
+            { $set: { 'history.$.touch_date': Date.now() } }
+        )
+
+        //3) If doesn't exist already push new
+        if (!DocUser) {
+            DocUser = await User.findByIdAndUpdate(req.user._id, {
+                $addToSet: { history: { product: prodId } },
+            })
+        }
+
+        //4) Send a response
+        res.json({ status: 'success', data: DocUser })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** clearMyHistory - Clear  my history
+ ** ==========================================================
+ */
+export const clearMyHistory = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Find and update to clear history
+        const DocUser = await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                history: [],
+            },
+            { new: true }
+        )
+
+        //2) Send a reponse
+        res.json({ status: 'success', data: DocUser })
     }
 )
 

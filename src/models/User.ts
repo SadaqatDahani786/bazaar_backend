@@ -35,6 +35,10 @@ export interface IUser {
         }
     ]
     role?: 'admin' | 'member'
+    history?: Array<{
+        product: ObjectId
+        touch_date: Date
+    }>
     created_at?: Date
     password_changed_at?: Date
     password_reset_token?: string
@@ -252,6 +256,18 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
         enum: ['admin', 'member'],
         default: 'member',
     },
+    history: [
+        {
+            product: {
+                type: ObjectId,
+                ref: 'Product',
+            },
+            touch_date: {
+                type: Date,
+                default: Date.now(),
+            },
+        },
+    ],
     created_at: {
         type: Date,
         default: Date.now(),
