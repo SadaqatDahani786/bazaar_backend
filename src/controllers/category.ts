@@ -12,50 +12,45 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Query Modifier
 import QueryModifier from '../packages/QueryModifier'
+import { Request, Response } from 'express'
 
 /**
  ** ==========================================================
  ** createCategory - Create a single category
  ** ==========================================================
  */
-export const createCategory = catchAsyncHandler(async (req, res) => {
-    //1) Get fields from request body
-    const categoryToBeCreated: ICategory = {
-        slug: req.body.slug,
-        name: req.body.name,
-        description: req.body.description,
-        image: undefined,
-        parent: req.body.parent,
+export const createCategory = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get fields from request body
+        const categoryToBeCreated: ICategory = {
+            slug: req.body.slug,
+            name: req.body.name,
+            description: req.body.description,
+            image: req.body.image,
+            parent: req.body.parent,
+        }
+
+        //2) Create category
+        const DocCategory = await Category.create(categoryToBeCreated)
+
+        //3) Populate fields
+        await DocCategory.populate({
+            path: 'image parent',
+            select: { url: 1, _id: 0, name: 1, slug: 1 },
+        })
+
+        //4) Make url complete
+        if (DocCategory?.image instanceof Media) {
+            DocCategory.image.url = makeUrlComplete(DocCategory.image.url, req)
+        }
+
+        //5) Send a response
+        res.status(201).json({
+            status: 'success',
+            data: DocCategory,
+        })
     }
-
-    //2) Check for image in req object, then set it
-    if (req.media?.some((m) => m.name === 'image')) {
-        const mediaCreated = await Media.create(
-            req.media.find((m) => m.name === 'image')
-        )
-        categoryToBeCreated.image = mediaCreated._id
-    }
-
-    //2) Create category
-    const DocCategory = await Category.create(categoryToBeCreated)
-
-    //3) Populate fields
-    await DocCategory.populate({
-        path: 'image parent',
-        select: { url: 1, _id: 0, name: 1, slug: 1 },
-    })
-
-    //4) Make url complete
-    if (DocCategory?.image instanceof Media) {
-        DocCategory.image.url = makeUrlComplete(DocCategory.image.url, req)
-    }
-
-    //5) Send a response
-    res.status(201).json({
-        status: 'success',
-        data: DocCategory,
-    })
-})
+)
 
 /**
  ** ==========================================================
@@ -182,19 +177,11 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
         slug: req.body.slug,
         name: req.body.name,
         description: req.body.description,
-        image: undefined,
+        image: req.body.image,
         parent: req.body.parent,
     }
 
-    //3) Check for image in req object, then set it
-    if (req.media?.some((m) => m.name === 'image')) {
-        const mediaCreated = await Media.create(
-            req.media.find((m) => m.name === 'image')
-        )
-        categoryToBeUpdated.image = mediaCreated._id
-    }
-
-    //4) Updated category document
+    //3) Updated category document
     const DocCategory = await Category.findOneAndUpdate(
         { _id: id },
         categoryToBeUpdated,
@@ -204,7 +191,7 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
         select: { url: 1, _id: 0, name: 1, slug: 1 },
     })
 
-    //5) If no doc found with the id, throw error
+    //4) If no doc found with the id, throw error
     if (!DocCategory) {
         throw new AppError(
             'No category document found to be update with the id provided.',
@@ -212,12 +199,12 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //6) Transormed DocCategory to have the full url for images
+    //5) Transormed DocCategory to have the full url for images
     if (DocCategory.image instanceof Media) {
         DocCategory.image.url = makeUrlComplete(DocCategory.image.url, req)
     }
 
-    //7) Send a response
+    //6) Send a response
     res.status(200).json({
         status: 'success',
         data: DocCategory,

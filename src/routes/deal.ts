@@ -1,7 +1,5 @@
 import express from 'express'
-import multerUpload from '../packages/multer'
 import { isAuthenticated, isAuthorized } from '../controllers/auth'
-import { imageToMedia } from '../controllers/media'
 import {
     createDeal,
     deleteDeal,
@@ -26,34 +24,12 @@ const Router = express.Router()
 //[Retrieve] many deal or [Create] a deal
 Router.route('/')
     .get(getManyDeal)
-    .post(
-        isAuthenticated,
-        isAuthorized('admin'),
-        multerUpload.fields([
-            {
-                name: 'image',
-                maxCount: 1,
-            },
-        ]),
-        imageToMedia('image'),
-        createDeal
-    )
+    .post(isAuthenticated, isAuthorized('admin'), createDeal)
 
 //[Retrieve] [Modify] [Remove] a deal by its id
 Router.route('/:id')
     .get(getDeal)
-    .put(
-        isAuthenticated,
-        isAuthorized('admin'),
-        multerUpload.fields([
-            {
-                name: 'image',
-                maxCount: 1,
-            },
-        ]),
-        imageToMedia('image'),
-        updateDeal
-    )
+    .put(isAuthenticated, isAuthorized('admin'), updateDeal)
     .delete(isAuthenticated, isAuthorized('admin'), deleteDeal)
 
 /**

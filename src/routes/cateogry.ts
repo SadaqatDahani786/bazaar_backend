@@ -7,8 +7,6 @@ import {
     getManyCategory,
     updateCategory,
 } from '../controllers/category'
-import { imageToMedia } from '../controllers/media'
-import multerUpload from '../packages/multer'
 
 /**
  ** ====================================
@@ -26,34 +24,12 @@ const Router = express.Router()
 //[Retrieve] many category or [Create] a category
 Router.route('/')
     .get(getManyCategory)
-    .post(
-        isAuthenticated,
-        isAuthorized('admin'),
-        multerUpload.fields([
-            {
-                name: 'image',
-                maxCount: 1,
-            },
-        ]),
-        imageToMedia('image'),
-        createCategory
-    )
+    .post(isAuthenticated, isAuthorized('admin'), createCategory)
 
 //[Retrieve] [Modify] [Remove] a category by its id
 Router.route('/:id')
     .get(getCategory)
-    .put(
-        isAuthenticated,
-        isAuthorized('admin'),
-        multerUpload.fields([
-            {
-                name: 'image',
-                maxCount: 1,
-            },
-        ]),
-        imageToMedia('image'),
-        updateCategory
-    )
+    .put(isAuthenticated, isAuthorized('admin'), updateCategory)
     .delete(isAuthenticated, isAuthorized('admin'), deleteCategory)
 
 /**

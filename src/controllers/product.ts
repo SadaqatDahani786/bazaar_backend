@@ -1,7 +1,10 @@
 import { Request, Response } from 'express'
+import { ObjectId } from 'mongodb'
 
 //Models & Types
 import Media from '../models/Media'
+import User from '../models/User'
+import Order from '../models/Order'
 import Product, { IProduct } from '../models/Product'
 
 //Error Handler
@@ -27,6 +30,8 @@ export const createProduct = catchAsyncHandler(
             description: req.body.description,
             price: req.body.price,
             selling_price: req.body.price,
+            image: req.body.image,
+            image_gallery: req.body.image_gallery,
             stock: req.body.stock,
             categories: req.body.categories,
             manufacturing_details: {
@@ -50,36 +55,10 @@ export const createProduct = catchAsyncHandler(
             staff_picked: req.body.staff_picked,
         }
 
-        //2) Set product image if provided
-        if (req.media?.some((m) => m.name === 'image')) {
-            const media = await Media.create(
-                req.media.find((m) => m.name === 'image')?.value
-            )
-            productToBeCreated.image = media._id
-        }
-
-        //3) Set product image gallery if provided
-        if (req.media?.some((m) => m.name === 'image_gallery')) {
-            const imgGallery = req.media.find(
-                (m) => m.name === 'image_gallery'
-            )?.value
-            if (Array.isArray(imgGallery) && imgGallery.length > 0) {
-                await Promise.all(
-                    imgGallery.map(async (m) => {
-                        return await Media.create(m)
-                    })
-                ).then((mediaObjects) => {
-                    productToBeCreated.image_gallery = mediaObjects.map(
-                        (m) => m._id
-                    )
-                })
-            }
-        }
-
-        //4) Create product
+        //2) Create product
         const DocProduct = await Product.create(productToBeCreated)
 
-        //5) Populate Fields
+        //3) Populate Fields
         await DocProduct.populate({
             path: 'image image_gallery categories',
             select: {
@@ -91,12 +70,12 @@ export const createProduct = catchAsyncHandler(
             },
         })
 
-        //5) Make url complete for image
+        //4) Make url complete for image
         if (DocProduct?.image instanceof Media) {
             DocProduct.image.url = makeUrlComplete(DocProduct.image.url, req)
         }
 
-        //6) Make url complete for image gallery
+        //5) Make url complete for image gallery
         const tranformedImageGallery: { url: string }[] = []
         DocProduct?.image_gallery?.map((media) => {
             if (media instanceof Media)
@@ -105,7 +84,7 @@ export const createProduct = catchAsyncHandler(
                 })
         })
 
-        //7) Send a response
+        //6) Send a response
         res.status(201).json({
             status: 'success',
             data: {
@@ -304,6 +283,191 @@ export const getTotalProductsCount = catchAsyncHandler(
 
 /**
  ** ==========================================================
+ ** getFrequentlyBoughtTogether - Get frequently bought together items
+ ** ==========================================================
+ */
+export const getFrquentlyBoughtTogether = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get product id
+        const prodId = req.params.prodId
+
+        //2) Get bought together items via aggreggation
+        const boughtTogetherItems = await Order.aggregate([
+            {
+                $match: { 'products.product': new ObjectId(prodId) },
+            },
+            {
+                $unwind: {
+                    path: '$products',
+                },
+            },
+            {
+                $match: { 'products.product': { $ne: new ObjectId(prodId) } },
+            },
+            {
+                $group: {
+                    _id: '$products.product',
+                    sold: { $sum: '$products.quantity' },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'product',
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                },
+            },
+            {
+                $sort: { sold: -1 },
+            },
+        ])
+
+        //3) Send a response
+        res.json({
+            status: 'success',
+            reuslts: boughtTogetherItems.length,
+            data: boughtTogetherItems,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getSimilarViewedItems - Get similar viewed items
+ ** ==========================================================
+ */
+export const getSimilarViewedItems = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get prodId
+        const prodId = req.params.prodId
+
+        //2) Find product with its id
+        const DocProduct = await Product.findById(prodId)
+
+        //3) Aggregate to find similar viewed items
+        const DocProducts = await User.aggregate([
+            {
+                $match: { 'history.product': new ObjectId(prodId) },
+            },
+            {
+                $unwind: { path: '$history' },
+            },
+            {
+                $match: { 'history.product': { $ne: new ObjectId(prodId) } },
+            },
+            {
+                $group: { _id: '$history.product', count: { $sum: 1 } },
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    foreignField: '_id',
+                    localField: '_id',
+                    as: 'product',
+                },
+            },
+            {
+                $match: {
+                    'product.categories': { $in: DocProduct?.categories },
+                },
+            },
+            {
+                $sort: {
+                    count: -1,
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                },
+            },
+        ])
+
+        //4) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: DocProducts.length,
+            data: DocProducts,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getTrendingItemsInYourArea - Get trending items in your area
+ ** ==========================================================
+ */
+export const getTrendingItemsInYourArea = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Throw error if no addresses found
+        if (!req.user || req?.user?.addresses?.length <= 0)
+            throw new AppError(
+                'Must set an address to get trending items based on your location.',
+                400
+            )
+
+        //2) Get user country from addresses
+        const userLoc = req.user.addresses.map((address) => address.country)
+
+        //3) Find trending products based on customers location
+        const DocsProduct = await Order.aggregate([
+            {
+                $lookup: {
+                    from: 'users',
+                    foreignField: '_id',
+                    localField: 'customer',
+                    as: 'customer',
+                },
+            },
+            {
+                $match: { 'customer.addresses.country': { $in: userLoc } },
+            },
+            {
+                $unwind: { path: '$products' },
+            },
+            {
+                $group: {
+                    _id: '$products.product',
+                    sales: { $sum: '$products.quantity' },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    foreignField: '_id',
+                    localField: '_id',
+                    as: 'product',
+                },
+            },
+            {
+                $sort: {
+                    sales: -1,
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                },
+            },
+        ])
+
+        //4) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: DocsProduct.length,
+            data: DocsProduct,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
  ** updateProduct - Update a single product
  ** ==========================================================
  */
@@ -320,6 +484,8 @@ export const updateProduct = catchAsyncHandler(
             price: req.body.price,
             selling_price: req.body.price,
             stock: req.body.stock,
+            image: req.body.image,
+            image_gallery: req.body.image_gallery,
             categories: req.body.categories,
             manufacturing_details: {
                 brand: req.body.manufacturing_details?.brand,
@@ -342,33 +508,7 @@ export const updateProduct = catchAsyncHandler(
             staff_picked: req.body.staff_picked,
         }
 
-        //3) Set product image if provided
-        if (req.media?.some((m) => m.name === 'image')) {
-            const media = await Media.create(
-                req.media.find((m) => m.name === 'image')?.value
-            )
-            productToBeUpdated.image = media._id
-        }
-
-        //4) Set product image gallery if provided
-        if (req.media?.some((m) => m.name === 'image_gallery')) {
-            const imgGallery = req.media.find(
-                (m) => m.name === 'image_gallery'
-            )?.value
-            if (Array.isArray(imgGallery) && imgGallery.length > 0) {
-                await Promise.all(
-                    imgGallery.map(async (m) => {
-                        return await Media.create(m)
-                    })
-                ).then((mediaObjects) => {
-                    productToBeUpdated.image_gallery = mediaObjects.map(
-                        (m) => m._id
-                    )
-                })
-            }
-        }
-
-        //5) Update product
+        //3) Update product
         const DocProduct = await Product.findByIdAndUpdate(
             id,
             productToBeUpdated,
@@ -377,7 +517,7 @@ export const updateProduct = catchAsyncHandler(
             }
         ).populate({ path: 'image image_gallery', select: { _id: 0, url: 1 } })
 
-        //6) If no document found, throw err
+        //4) If no document found, throw err
         if (!DocProduct) {
             throw new AppError(
                 'No product document to update with the id provided.',
@@ -385,12 +525,12 @@ export const updateProduct = catchAsyncHandler(
             )
         }
 
-        //7) Make url complete for image
+        //5) Make url complete for image
         if (DocProduct?.image instanceof Media) {
             DocProduct.image.url = makeUrlComplete(DocProduct.image.url, req)
         }
 
-        //8) Make url complete for image gallery
+        //6) Make url complete for image gallery
         const tranformedImageGallery: { url: string }[] = []
         DocProduct?.image_gallery?.map((media) => {
             if (media instanceof Media)
@@ -399,7 +539,7 @@ export const updateProduct = catchAsyncHandler(
                 })
         })
 
-        //9) Send a response
+        //7) Send a response
         res.status(200).json({
             status: 'success',
             data: {

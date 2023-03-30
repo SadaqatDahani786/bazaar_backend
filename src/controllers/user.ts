@@ -1,3 +1,5 @@
+import { NextFunction, Request, Response } from 'express'
+
 //Utils
 import makeUrlComplete from '../utils/makeUrlComplete'
 import { isToPopulate } from '../utils/isToPopulate'
@@ -13,7 +15,6 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Query Modifier
 import QueryModifier from '../packages/QueryModifier'
-import { NextFunction, Request, Response } from 'express'
 
 /**
  ** ====================================

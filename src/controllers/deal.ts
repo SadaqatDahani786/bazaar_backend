@@ -24,33 +24,26 @@ export const createDeal = catchAsyncHandler(
         const dealToBeCreated: IDeal = {
             title: req.body.title,
             products: req.body.products,
+            image: req.body.image,
             starts_from: req.body.starts_from,
             expires_in: req.body.expires_in,
         }
 
-        //2) Set deal image if provided
-        if (req.media?.some((m) => m.name === 'image')) {
-            const media = await Media.create(
-                req.media.find((m) => m.name === 'image')?.value
-            )
-            dealToBeCreated.image = media._id
-        }
-
-        //3) Create deal
+        //2) Create deal
         const DocDeal = await Deal.create(dealToBeCreated)
 
-        //4) Populate fields
+        //3) Populate fields
         await DocDeal.populate({
             path: 'image products',
             select: { _id: 0, url: 1, title: 1 },
         })
 
-        //5) Make url complete for image
+        //4) Make url complete for image
         if (DocDeal?.image instanceof Media) {
             DocDeal.image.url = makeUrlComplete(DocDeal.image.url, req)
         }
 
-        //6) Send a response
+        //5) Send a response
         res.status(201).json({
             status: 'success',
             data: DocDeal,
@@ -190,19 +183,12 @@ export const updateDeal = catchAsyncHandler(
         const dealToBeUpdated: IDeal = {
             title: req.body.title,
             products: req.body.products,
+            image: req.body.image,
             starts_from: req.body.starts_from,
             expires_in: req.body.expires_in,
         }
 
-        //3) Set deal image if provided
-        if (req.media?.some((m) => m.name === 'image')) {
-            const media = await Media.create(
-                req.media.find((m) => m.name === 'image')?.value
-            )
-            dealToBeUpdated.image = media._id
-        }
-
-        //4) Update deal
+        //3) Update deal
         const DocDeal = await Deal.findByIdAndUpdate(id, dealToBeUpdated, {
             new: true,
         }).populate({
@@ -210,7 +196,7 @@ export const updateDeal = catchAsyncHandler(
             select: { _id: 0, url: 1, title: 1 },
         })
 
-        //5) If no deal document found, throw err
+        //4) If no deal document found, throw err
         if (!DocDeal) {
             throw new AppError(
                 'No deal document found to be update with the id provided.',
@@ -218,12 +204,12 @@ export const updateDeal = catchAsyncHandler(
             )
         }
 
-        //6) Make url complete for image
+        //5) Make url complete for image
         if (DocDeal?.image instanceof Media) {
             DocDeal.image.url = makeUrlComplete(DocDeal.image.url, req)
         }
 
-        //7) Return a response
+        //6) Return a response
         res.status(200).json({
             status: 'sucess',
             data: DocDeal,
