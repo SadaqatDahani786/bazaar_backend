@@ -47,7 +47,7 @@ export default class QueryModifier<QueryType> {
 
         //2) Remove unwanting fields
         let queryObject =
-            this.queryStr instanceof Object ? { ...this.queryStr } : {}
+            typeof this.queryStr === 'object' ? { ...this.queryStr } : {}
         excludeFields.forEach((el) => {
             if (Object.prototype.hasOwnProperty.call(queryObject, el)) {
                 queryObject = { ...queryObject, [el]: undefined }
@@ -60,6 +60,7 @@ export default class QueryModifier<QueryType> {
             /\b(gt|lt|gte|lte|in)\b/g,
             (match) => `$${match}`
         )
+
         queryObject = JSON.parse(queryStr)
 
         //4) Save query
