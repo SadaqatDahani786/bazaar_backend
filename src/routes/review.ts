@@ -1,12 +1,14 @@
 import express from 'express'
 import multerUpload from '../packages/multer'
-import { isAuthenticated, isAuthorized } from '../controllers/auth'
+import { isAuthenticated } from '../controllers/auth'
 import { imageToMedia } from '../controllers/media'
 import {
     createReview,
     deleteReview,
     getManyReview,
     getReview,
+    setFilterQueryProductId,
+    filterAndTransformTheBody,
     updateReview,
 } from '../controllers/review'
 
@@ -15,7 +17,7 @@ import {
  ** Router
  ** ====================================
  */
-const Router = express.Router()
+const Router = express.Router({ mergeParams: true })
 
 /**
  ** ====================================
@@ -25,16 +27,16 @@ const Router = express.Router()
 
 //[Retrieve] many review or [Create] a review
 Router.route('/')
-    .get(getManyReview)
+    .get(setFilterQueryProductId, getManyReview)
     .post(
         isAuthenticated,
-        isAuthorized('admin'),
         multerUpload.fields([
             {
                 name: 'images',
             },
         ]),
         imageToMedia('images'),
+        filterAndTransformTheBody,
         createReview
     )
 
@@ -43,16 +45,16 @@ Router.route('/:id')
     .get(getReview)
     .put(
         isAuthenticated,
-        isAuthorized('admin'),
         multerUpload.fields([
             {
                 name: 'images',
             },
         ]),
         imageToMedia('images'),
+        filterAndTransformTheBody,
         updateReview
     )
-    .delete(isAuthenticated, isAuthorized('admin'), deleteReview)
+    .delete(isAuthenticated, deleteReview)
 
 /**
  ** ====================================

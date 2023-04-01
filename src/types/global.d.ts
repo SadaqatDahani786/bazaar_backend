@@ -1,20 +1,5 @@
+import { IMedia } from '../models/Media'
 import { IUser } from '../models/User'
-
-/**
- ** ==========================================================
- ** Type [media]
- ** ==========================================================
- */
-type media = {
-    original_name: string
-    filename: string
-    file_type: string
-    url: string
-    dimensions: {
-        width: number
-        height: number
-    }
-}
 
 /**
  ** ==========================================================
@@ -31,7 +16,7 @@ export declare global {
             user: IUser
             media: {
                 name: string
-                value: media | media[]
+                value: IMedia | IMedia[]
             }[] = []
         }
     }

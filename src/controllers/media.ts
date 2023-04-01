@@ -15,6 +15,7 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 //Packages
 import QueryModifier from '../packages/QueryModifier'
 import imageSize from 'image-size'
+import { isToPopulate } from '../utils/isToPopulate'
 
 /**
  ** ==========================================================
@@ -122,13 +123,15 @@ export const imageToMedia = (field: string) => {
  */
 export const uploadMedia = catchAsyncHandler(async (req, res) => {
     //1) Get media arr from req object
-    const mediaDocsToBeCreated = req.media
+    const mediaDocsToBeCreated = req.media.find(
+        (media) => media.name === 'images'
+    )?.value
 
     //2) Validation
     if (
         !mediaDocsToBeCreated ||
-        (Array.isArray(mediaDocsToBeCreated) &&
-            mediaDocsToBeCreated.length <= 0)
+        !Array.isArray(mediaDocsToBeCreated) ||
+        mediaDocsToBeCreated.length <= 0
     )
         throw new AppError(
             'Please provided [images] paramenter, which must contains one or more image files.',
@@ -136,7 +139,12 @@ export const uploadMedia = catchAsyncHandler(async (req, res) => {
         )
 
     //3) Create a Media documents from it's model
-    const DocsMedia = await Media.insertMany(mediaDocsToBeCreated)
+    const DocsMedia = await Media.insertMany(
+        mediaDocsToBeCreated.map((media) => ({
+            ...media,
+            uploaded_by: req.user._id,
+        }))
+    )
 
     //4) Transormed docsMedia to have the full url for images
     const transormedDocsMedia = DocsMedia.map((doc) => ({
@@ -163,6 +171,7 @@ export const createMedia = catchAsyncHandler(async (req, res) => {
         title: req.body.title,
         description: req.body.description,
         caption: req.body.description,
+        uploaded_by: req.user._id,
     }
 
     //2) Validation
@@ -178,13 +187,19 @@ export const createMedia = catchAsyncHandler(async (req, res) => {
         ...mediaToBeCreated,
     })
 
-    //4) Transormed docsMedia to have the full url for images
+    //4) Populate fields
+    await DocMedia.populate({
+        path: 'uploaded_by',
+        select: { _id: 0, name: 1, email: 1 },
+    })
+
+    //5) Transormed docsMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia.toJSON(),
         url: makeUrlComplete(DocMedia.url, req),
     }
 
-    //5) Send a response
+    //6) Send a response
     res.status(201).json({
         status: 'success',
         data: transormedDocMedia,
@@ -203,16 +218,24 @@ export const getMedia = catchAsyncHandler(async (req, res) => {
     //2) Get query
     const query = Media.findById(id)
 
-    //3) Apply query modifiers to query
+    //3) Populates fields when it's okay to do so
+    if (isToPopulate('uploaded_by', req)) {
+        query.populate({
+            path: 'uploaded_by',
+            select: { _id: 0, name: 1, email: 1 },
+        })
+    }
+
+    //4) Apply query modifiers to query
     const QueryModfier = new QueryModifier<typeof query>(
         query,
         req.query
     ).select()
 
-    //4) Exec query to retrieve media doc found
+    //5) Exec query to retrieve media doc found
     const DocMedia = await QueryModfier.query.exec()
 
-    //3) If no doc found with the ID, throw error
+    //6) If no doc found with the ID, throw error
     if (!DocMedia) {
         throw new AppError(
             'No media document found to retrieve with the id provided.',
@@ -220,13 +243,13 @@ export const getMedia = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //4) Transormed DocMedia to have the full url for images
+    //7) Transormed DocMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia.toJSON(),
         url: DocMedia.url ? makeUrlComplete(DocMedia.url, req) : undefined,
     }
 
-    //5) Send a response
+    //8) Send a response
     res.status(200).json({
         status: 'success',
         data: transormedDocMedia,
@@ -242,28 +265,36 @@ export const getManyMedia = catchAsyncHandler(async (req, res) => {
     //1) Get query
     const query = Media.find()
 
-    //2) Apply query modifiers to query
+    //2) Populates fields when it's okay to do so
+    if (isToPopulate('uploaded_by', req)) {
+        query.populate({
+            path: 'uploaded_by',
+            select: { _id: 0, name: 1, email: 1 },
+        })
+    }
+
+    //3) Apply query modifiers to query
     const QueryModfier = new QueryModifier<typeof query>(query, req.query)
         .filter()
         .sort()
         .select()
         .paginate()
 
-    //3) Exec query to retrieve all media docs match found
+    //4) Exec query to retrieve all media docs match found
     const DocsMedia = await QueryModfier.query.exec()
 
-    //4) If no doc founds, throw error
+    //5) If no doc founds, throw error
     if (!DocsMedia) {
         throw new AppError('No media document found to be retrieved.', 404)
     }
 
-    //5) Transormed DocsMedia to have the full url for images
+    //6) Transormed DocsMedia to have the full url for images
     const transormedDocsMedia = DocsMedia.map((media) => ({
         ...media.toJSON(),
         url: media.url ? makeUrlComplete(media.url, req) : undefined,
     }))
 
-    //6) Send a response
+    //7) Send a response
     res.status(200).json({
         status: 'success',
         results: transormedDocsMedia.length,
@@ -304,13 +335,19 @@ export const updateMedia = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //5) Transormed DocMedia to have the full url for images
+    //5) Populate fields
+    await DocMedia.populate({
+        path: 'uploaded_by',
+        select: { _id: 0, name: 1, email: 1 },
+    })
+
+    //6) Transormed DocMedia to have the full url for images
     const transormedDocMedia = {
         ...DocMedia?.toJSON(),
         url: makeUrlComplete(DocMedia.url, req),
     }
 
-    //6) Send a response
+    //7) Send a response
     res.status(200).json({
         status: 'success',
         data: transormedDocMedia,

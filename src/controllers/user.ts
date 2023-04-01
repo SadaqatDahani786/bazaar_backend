@@ -73,16 +73,30 @@ export const createUser = catchAsyncHandler(
             )
         }
 
-        //4) Check for image in req object, then set it
-        if (req.media?.some((m) => m.name === 'photo')) {
-            const mediaCreated = await Media.create(
-                req.media.find((m) => m.name === 'photo')
-            )
-            userToBeCreated.photo = mediaCreated._id
-        }
-
         //5) Create user
         const DocUser = await User.create(userToBeCreated)
+
+        //5) If image provided, create media, and set it to user profile
+        if (req.media?.some((m) => m.name === 'photo')) {
+            //=> Get media to be created
+            const mediaToBeCreated = req.media.find(
+                (m) => m.name === 'photo'
+            )?.value
+
+            //=> Validate existence
+            if (
+                mediaToBeCreated !== undefined &&
+                !Array.isArray(mediaToBeCreated)
+            ) {
+                //=> Create media
+                mediaToBeCreated.uploaded_by = DocUser._id
+                const mediaCreated = await Media.create(mediaToBeCreated)
+
+                //=> Set newly created media as photo in user and save it
+                DocUser.photo = mediaCreated._id
+                await DocUser.save({ validateBeforeSave: false })
+            }
+        }
 
         //6) Populate fields
         await DocUser.populate({
@@ -433,12 +447,11 @@ export const updateUser = catchAsyncHandler(
             username: req.body.password,
             password: req.body.password,
             password_confirm: req.body.password_confirm,
-            photo: undefined,
             addresses: req.body.addresses,
             phone_no: req.body.phone_no,
         }
 
-        //2) Disallow to have multiple billing address set to default
+        //3) Disallow to have multiple billing address set to default
         if (
             userToBeUpdated.addresses?.length > 0 &&
             userToBeUpdated.addresses.filter(
@@ -451,7 +464,7 @@ export const updateUser = catchAsyncHandler(
             )
         }
 
-        //3) Disallow to have multiple shipping address set to default
+        //4) Disallow to have multiple shipping address set to default
         if (
             userToBeUpdated.addresses?.length > 0 &&
             userToBeUpdated.addresses.filter(
@@ -464,15 +477,29 @@ export const updateUser = catchAsyncHandler(
             )
         }
 
-        //4) Check for image in req object, then set it
+        //5) If image provided, create media, and set it to user profile
         if (req.media?.some((m) => m.name === 'photo')) {
-            const mediaCreated = await Media.create(
-                req.media.find((m) => m.name === 'photo')
-            )
-            userToBeUpdated.photo = mediaCreated._id
+            //=> Get media to be created
+            const mediaToBeCreated = req.media.find(
+                (m) => m.name === 'photo'
+            )?.value
+
+            //=> Validate existence
+            if (
+                mediaToBeCreated !== undefined &&
+                !Array.isArray(mediaToBeCreated) &&
+                req.user?._id
+            ) {
+                //=> Create media
+                mediaToBeCreated.uploaded_by = req.user._id
+                const mediaCreated = await Media.create(mediaToBeCreated)
+
+                //=> Set newly created media as photo in user
+                userToBeUpdated.photo = mediaCreated._id
+            }
         }
 
-        //5) Updated user document
+        //6) Updated user document
         const DocUser = await User.findOneAndUpdate(
             { _id: id },
             userToBeUpdated,
@@ -485,7 +512,7 @@ export const updateUser = catchAsyncHandler(
             select: { url: 1, _id: 0, name: 1 },
         })
 
-        //6) If no doc found with the id, throw error
+        //7) If no doc found with the id, throw error
         if (!DocUser) {
             throw new AppError(
                 'No user document found to be update with the id provided.',
@@ -493,12 +520,12 @@ export const updateUser = catchAsyncHandler(
             )
         }
 
-        //7) Transormed DocUser to have the full url for images
+        //8) Transormed DocUser to have the full url for images
         if (DocUser.photo instanceof Media) {
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
         }
 
-        //8) Send a response
+        //9) Send a response
         res.status(200).json({
             status: 'success',
             data: DocUser,

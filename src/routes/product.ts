@@ -11,6 +11,7 @@ import {
     getTrendingItemsInYourArea,
     updateProduct,
 } from '../controllers/product'
+import RouterReview from './review'
 
 /**
  ** ====================================
@@ -18,6 +19,15 @@ import {
  ** ====================================
  */
 const Router = express.Router()
+
+/**
+ ** ====================================
+ ** NESTED ROUTES
+ ** ====================================
+ */
+
+//[Get] Product Reviews
+Router.use('/:prodId/review', RouterReview)
 
 /**
  ** ====================================

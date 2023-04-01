@@ -27,7 +27,6 @@ export const signup = catchAsyncHandler(async (req, res) => {
         username: req.body.username,
         password: req.body.password,
         password_confirm: req.body.password_confirm,
-        photo: undefined,
         addresses: req.body.addresses,
         phone_no: req.body.phone_no,
     }
@@ -58,16 +57,30 @@ export const signup = catchAsyncHandler(async (req, res) => {
         )
     }
 
-    //4) Check for image in req object, then set it
-    if (req.media?.some((m) => m.name === 'photo')) {
-        const mediaCreated = await Media.create(
-            req.media.find((m) => m.name === 'photo')
-        )
-        userToCreate.photo = mediaCreated._id
-    }
-
-    //5) Create new user
+    //4) Create new user
     const user = await User.create(userToCreate)
+
+    //5) If image provided, create media, and set it to user profile
+    if (req.media?.some((m) => m.name === 'photo')) {
+        //=> Get media to be created
+        const mediaToBeCreated = req.media.find(
+            (m) => m.name === 'photo'
+        )?.value
+
+        //=> Validate existence
+        if (
+            mediaToBeCreated !== undefined &&
+            !Array.isArray(mediaToBeCreated)
+        ) {
+            //=> Create media
+            mediaToBeCreated.uploaded_by = user._id
+            const mediaCreated = await Media.create(mediaToBeCreated)
+
+            //=> Set newly created media as photo in user and save it
+            user.photo = mediaCreated._id
+            await user.save({ validateBeforeSave: false })
+        }
+    }
 
     //6) Validation
     if (!user) {

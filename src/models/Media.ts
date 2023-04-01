@@ -1,12 +1,34 @@
+import { ObjectId } from 'mongodb'
 import { model, Schema } from 'mongoose'
 import validator from 'validator'
+
+/**
+ ** ====================================
+ ** Interface [IMedia]
+ ** ====================================
+ */
+export interface IMedia {
+    original_name: string
+    filename: string
+    file_type: string
+    url: string
+    dimensions: {
+        width: number
+        height: number
+    }
+    title?: string
+    description?: string
+    caption?: string
+    uploaded_by: ObjectId
+    created_at: Date
+}
 
 /**
  ** ====================================
  ** Schema [Media]
  ** ====================================
  */
-const schemaMedia = new Schema({
+const schemaMedia = new Schema<IMedia>({
     original_name: {
         type: String,
         maxLength: [200, 'Filename must be less than 200 characters long.'],
@@ -16,7 +38,7 @@ const schemaMedia = new Schema({
         type: String,
         maxLength: [200, 'Filename must be less than 200 characters long.'],
         required: [true, 'Filename for media must be provided.'],
-        unique: [true, 'Filename must be unique.'],
+        unique: true,
     },
     file_type: {
         type: String,
@@ -62,6 +84,14 @@ const schemaMedia = new Schema({
         type: String,
         trim: true,
         maxLength: [100, 'File caption must be less than 100 characters long.'],
+    },
+    uploaded_by: {
+        type: ObjectId,
+        ref: 'User',
+        required: [
+            true,
+            'Must provide "uploaded_by" user to who this image belongs to.',
+        ],
     },
     created_at: {
         type: Date,
