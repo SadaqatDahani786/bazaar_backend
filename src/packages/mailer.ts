@@ -22,7 +22,7 @@ export const mail = async ({
 
     //2) Mail Options
     const mailOptions = {
-        from: 'izuku.midoriyaa786@gmail.com',
+        from: 'bazaar.incorporation@gmail.com',
         to: mail,
         subject: subject,
         html: html,

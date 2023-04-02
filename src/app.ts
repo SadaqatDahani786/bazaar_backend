@@ -24,6 +24,13 @@ import RouterCheckout from './routes/checkout'
 //Controllers
 import { checkoutSuccessStripeWebhook } from './controllers/checkout'
 
+//Security
+import helm from 'helmet'
+import rateLimit from 'express-rate-limit'
+import sanitize from 'express-mongo-sanitize'
+import xss from 'xss-clean'
+import hppPrevent from 'hpp-prevent'
+
 /**
  ** ====================================
  ** INIT
@@ -32,6 +39,7 @@ import { checkoutSuccessStripeWebhook } from './controllers/checkout'
 //Config
 global.app_dir = path.resolve(__dirname)
 dotenv.config({ path: '.env' })
+hppPrevent.config({ whitelist: ['created_at'] })
 
 //Vars
 const API_ENDPOINT = '/api/v1'
@@ -39,6 +47,12 @@ const API_ENDPOINT = '/api/v1'
 //Init
 const app = express()
 const HttpServer = new Server(app)
+const limitRequests = rateLimit({
+    max: 10000,
+    windowMs: 60 * 60 * 1000,
+    message:
+        'Too many requests from the same IP address. Please try again in an hour.',
+})
 
 /**
  ** ====================================
@@ -55,10 +69,19 @@ app.route(`${API_ENDPOINT}/checkout/success-stripe-webhook`).post(
  ** MIDDLEWARES
  ** ====================================
  */
+
+app.use(helm())
+app.use('/api', limitRequests)
+
 app.use(cors())
 app.use(cookieParser())
 app.use(bodyParser.json({ limit: '10kb' }))
+app.use(express.json({ limit: '10kb' }))
 app.use(express.static('src/public'))
+
+app.use(sanitize())
+app.use(xss())
+app.use(hppPrevent.hppPrevent())
 
 /**
  ** ====================================
