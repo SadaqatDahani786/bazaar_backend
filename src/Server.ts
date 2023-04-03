@@ -5,6 +5,7 @@ import {
     unhandledPromiseRejectionHandler,
     uncaughtExceptionHandler,
 } from './error handling/errorHandlers'
+import { populateLocations } from './controllers/location'
 
 /**
  ** ====================================
@@ -73,6 +74,9 @@ export default class Server implements IServer {
                     : (process.env.MONGODB_CONNECTION_ATLAS as NodeEnv)
             )
             console.log('MongoDB Connection Was:\t\t\t[Successfull]')
+
+            //populate locations
+            populateLocations()
         } catch (error) {
             console.log(
                 `MongoDB Connection Was:\t\t\t[UnSuccessfull]\n${error}`
