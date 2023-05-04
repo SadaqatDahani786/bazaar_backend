@@ -6,6 +6,7 @@ import {
     getManyMedia,
     getMedia,
     imageToMedia,
+    searchMedia,
     updateMedia,
     uploadMedia,
 } from '../controllers/media'
@@ -40,6 +41,9 @@ Router.route('/upload').post(
     imageToMedia('images'),
     uploadMedia
 )
+
+//[Retrieve] many media or [Create] a media
+Router.route('/search/:query').get(searchMedia)
 
 //[Retrieve] many media or [Create] a media
 Router.route('/')

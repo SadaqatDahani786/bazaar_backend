@@ -162,6 +162,32 @@ export const uploadMedia = catchAsyncHandler(async (req, res) => {
 
 /**
  ** ==========================================================
+ ** searchMedia - Get one or more media via searching
+ ** ==========================================================
+ */
+export const searchMedia = catchAsyncHandler(async (req, res) => {
+    //1) Get search query from params
+    const query = req.params.query
+
+    //2) Search for media
+    const DocsMedia = await Media.find({ $text: { $search: query } })
+
+    //3) Transormed DocsMedia to have the full url for images
+    const transormedDocsMedia = DocsMedia.map((media) => ({
+        ...media.toJSON(),
+        url: media.url ? makeUrlComplete(media.url, req) : undefined,
+    }))
+
+    //4) Send a response
+    res.status(200).json({
+        status: 'success',
+        results: transormedDocsMedia.length,
+        data: transormedDocsMedia,
+    })
+})
+
+/**
+ ** ==========================================================
  ** createMedia - Create a single media
  ** ==========================================================
  */

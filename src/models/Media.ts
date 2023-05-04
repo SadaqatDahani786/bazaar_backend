@@ -101,6 +101,17 @@ const schemaMedia = new Schema<IMedia>({
 
 /**
  ** ====================================
+ ** Indexes
+ ** ====================================
+ */
+schemaMedia.index({
+    title: 'text',
+    description: 'text',
+    caption: 'text',
+})
+
+/**
+ ** ====================================
  ** Model [Media]
  ** ====================================
  */

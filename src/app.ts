@@ -74,15 +74,25 @@ app.route(`${API_ENDPOINT}/checkout/success-stripe-webhook`).post(
 app.use(helm())
 app.use('/api', limitRequests)
 
-app.use(cors())
 app.use(cookieParser())
 app.use(bodyParser.json({ limit: '10kb' }))
 app.use(express.json({ limit: '10kb' }))
-app.use(express.static('src/public'))
 
 app.use(sanitize())
 app.use(xss())
 app.use(hppPrevent.hppPrevent())
+
+app.use(
+    cors({
+        origin: 'http://localhost:3000',
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        preflightContinue: false,
+        optionsSuccessStatus: 204,
+        credentials: true,
+    })
+)
+
+app.use(express.static('src/public'))
 
 /**
  ** ====================================
