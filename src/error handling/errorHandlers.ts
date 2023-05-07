@@ -26,7 +26,7 @@ export const errorHandler = (
     if (envNode === 'development') {
         res.status(errStatusCode).json({
             status: errStatus,
-            error_message: err.message,
+            message: err.message,
             error: err.stack,
         })
     } else if (envNode === 'production') {
@@ -88,7 +88,7 @@ export const errorHandler = (
         //Default Response
         res.status(errStatusCode).json({
             status: errStatus,
-            error_message:
+            message:
                 err instanceof AppError && err.isOperational
                     ? err.message
                     : 'Something went wrong! There was an internal error on the server.',
