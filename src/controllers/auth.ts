@@ -24,11 +24,12 @@ export const signup = catchAsyncHandler(async (req, res) => {
     const userToCreate: IUser = {
         name: req.body.name,
         email: req.body.email,
+        phone_no: req.body.phone_no,
+        bio: req.body.bio,
         username: req.body.username,
         password: req.body.password,
         password_confirm: req.body.password_confirm,
         addresses: req.body.addresses,
-        phone_no: req.body.phone_no,
     }
 
     //2) Disallow to have multiple billing address set to default

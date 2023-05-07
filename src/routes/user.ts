@@ -10,6 +10,7 @@ import {
     getTotalusersCount,
     getUser,
     getUsersCountThisMonth,
+    searchUser,
     setUserId,
     updateUser,
 } from '../controllers/user'
@@ -63,6 +64,8 @@ Router.route('/me')
  ** **
  */
 Router.use(isAuthorized('admin'))
+
+Router.route('/search/:query').get(searchUser)
 
 //[Retrieve] total users count
 Router.route('/total-users-count').get(getTotalusersCount)

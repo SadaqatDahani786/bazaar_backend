@@ -14,10 +14,11 @@ export interface IUser {
     name: string
     username: string
     email: string
+    phone_no: string
+    bio: string
     password: string | undefined
     password_confirm: string | undefined
     photo?: ObjectId
-    phone_no: string
     addresses: [
         {
             _id?: ObjectId
@@ -203,6 +204,25 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
         trim: true,
         validate: [validator.isEmail, 'Please provide a valid email address.'],
     },
+    phone_no: {
+        type: String,
+        unique: true,
+        validate: {
+            validator: (value: string) => {
+                return validator.isMobilePhone(value, 'any', {
+                    strictMode: true,
+                })
+            },
+            message:
+                'Please provide a valid phone number that must include country code with + sign.',
+        },
+    },
+    bio: {
+        type: String,
+        maxlength: [160, 'User bio must be 160 characters long or less.'],
+        required: [true, 'A user must have a bio.'],
+        trim: true,
+    },
     password: {
         type: String,
         maxLength: [60, 'Password must be 60 characters long or less.'],
@@ -219,7 +239,17 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
         required: [true, 'Please confirm your password.'],
         validate: {
             validator: function (passConfirm: string) {
+                //1) Find password confirm in update query
+                const pass_confirm = (
+                    this as {
+                        _update: { $set: { password_confirm: string } }
+                    }
+                )._update.$set.password_confirm
+
+                //2) Return results
                 return (this as IUser).password === passConfirm
+                    ? passConfirm
+                    : pass_confirm
             },
             message: 'Password and password confirm mismatched.',
         },
@@ -227,16 +257,6 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     photo: {
         type: ObjectId,
         ref: 'Media',
-    },
-    phone_no: {
-        type: String,
-        unique: true,
-        validate: {
-            validator: (value: string) =>
-                validator.isMobilePhone(value, 'any', { strictMode: true }),
-            message:
-                'Please provide a valid phone number that must include country code with + sign.',
-        },
     },
     addresses: [
         {
@@ -275,6 +295,15 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     password_changed_at: { type: Date },
     password_reset_token: { type: String },
     password_reset_token_expiration: { type: Date },
+})
+
+/**
+ ** ====================================
+ ** Indexes
+ ** ====================================
+ */
+schemaUser.index({
+    name: 'text',
 })
 
 /**

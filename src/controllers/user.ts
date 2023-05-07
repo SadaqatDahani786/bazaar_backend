@@ -30,6 +30,35 @@ export const setUserId = (req: Request, res: Response, next: NextFunction) => {
 
 /**
  ** ==========================================================
+ ** searchUser - Get one or more user via searching
+ ** ==========================================================
+ */
+export const searchUser = catchAsyncHandler(async (req, res) => {
+    //1) Get search query from params
+    const query = req.params.query
+
+    //2) Search for users
+    const DocsUser = await User.find({ $text: { $search: query } })
+
+    //3) Transormed DocsMedia to have the full url for images
+    const transormedDocsUser = DocsUser.map((user) => {
+        //=> User profile picture
+        if (user?.photo instanceof Media)
+            user.photo.url = makeUrlComplete(user.photo.url, req)
+
+        return user
+    })
+
+    //4) Send a response
+    res.status(200).json({
+        status: 'success',
+        results: transormedDocsUser.length,
+        data: transormedDocsUser,
+    })
+})
+
+/**
+ ** ==========================================================
  ** createUser - Create a single user
  ** ==========================================================
  */
@@ -39,12 +68,20 @@ export const createUser = catchAsyncHandler(
         const userToBeCreated: IUser = {
             name: req.body.name,
             email: req.body.email,
-            username: req.body.password,
+            phone_no: req.body.phone_no,
+            username: req.body.username,
+            bio: req.body.bio,
             password: req.body.password,
             password_confirm: req.body.password_confirm,
             photo: undefined,
-            addresses: req.body.addresses,
-            phone_no: req.body.phone_no,
+            addresses: [
+                {
+                    ...req.body.addresses,
+                    default_billing_address: true,
+                    default_shipping_address: true,
+                },
+            ],
+            role: req.body.role,
         }
 
         //2) Disallow to have multiple billing address set to default
@@ -444,11 +481,13 @@ export const updateUser = catchAsyncHandler(
         const userToBeUpdated: IUser = {
             name: req.body.name,
             email: req.body.email,
-            username: req.body.password,
+            phone_no: req.body.phone_no,
+            username: req.body.username,
+            bio: req.body.bio,
             password: req.body.password,
             password_confirm: req.body.password_confirm,
             addresses: req.body.addresses,
-            phone_no: req.body.phone_no,
+            role: req.body.role,
         }
 
         //3) Disallow to have multiple billing address set to default
