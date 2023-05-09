@@ -484,8 +484,8 @@ export const updateUser = catchAsyncHandler(
             phone_no: req.body.phone_no,
             username: req.body.username,
             bio: req.body.bio,
-            password: req.body.password,
-            password_confirm: req.body.password_confirm,
+            password: undefined,
+            password_confirm: undefined,
             addresses: req.body.addresses,
             role: req.body.role,
         }
@@ -559,12 +559,19 @@ export const updateUser = catchAsyncHandler(
             )
         }
 
-        //8) Transormed DocUser to have the full url for images
+        //8) Runs the save middleware to hash th password
+        if (req.body.password && req.body.password_confirm) {
+            DocUser.password = req.body.password
+            DocUser.password_confirm = req.body.password_confirm
+            await DocUser.save()
+        }
+
+        //9) Transormed DocUser to have the full url for images
         if (DocUser.photo instanceof Media) {
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
         }
 
-        //9) Send a response
+        //10) Send a response
         res.status(200).json({
             status: 'success',
             data: DocUser,

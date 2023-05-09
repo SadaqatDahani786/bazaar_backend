@@ -93,7 +93,7 @@ export const subSchemaUserAddress = {
                     strictMode: true,
                 }),
             message:
-                'Please provide a valid phone number that must include country code with + sign.',
+                'Please provide a valid phone number which must start with + sign, and must include country code.',
         },
     },
     country: {
@@ -214,7 +214,7 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
                 })
             },
             message:
-                'Please provide a valid phone number that must include country code with + sign.',
+                'Please provide a valid phone number which must start with + sign, and must include country code.',
         },
     },
     bio: {
@@ -240,16 +240,14 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
         validate: {
             validator: function (passConfirm: string) {
                 //1) Find password confirm in update query
-                const pass_confirm = (
+                const password = (
                     this as {
-                        _update: { $set: { password_confirm: string } }
+                        _update: { $set: { password: string } }
                     }
-                )._update.$set.password_confirm
+                )._update?.$set?.password
 
                 //2) Return results
-                return (this as IUser).password === passConfirm
-                    ? passConfirm
-                    : pass_confirm
+                return (this as IUser).password || password === passConfirm
             },
             message: 'Password and password confirm mismatched.',
         },
