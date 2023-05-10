@@ -67,6 +67,16 @@ const schemaCategory = new Schema<ICategory>({
 
 /**
  ** ====================================
+ ** Indexes
+ ** ====================================
+ */
+schemaCategory.index({
+    name: 'text',
+    description: 'text',
+})
+
+/**
+ ** ====================================
  ** Model [Category]
  ** ====================================
  */

@@ -1,3 +1,6 @@
+import { Request, Response } from 'express'
+import { ObjectId } from 'mongodb'
+
 //Utils
 import makeUrlComplete from '../utils/makeUrlComplete'
 import { isToPopulate } from '../utils/isToPopulate'
@@ -12,7 +15,6 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Query Modifier
 import QueryModifier from '../packages/QueryModifier'
-import { Request, Response } from 'express'
 
 /**
  ** ==========================================================
@@ -26,7 +28,7 @@ export const createCategory = catchAsyncHandler(
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
-            image: req.body.image,
+            image: new ObjectId(req.body.image),
             parent: req.body.parent,
         }
 
@@ -122,13 +124,13 @@ export const getManyCategory = catchAsyncHandler(async (req, res) => {
     if (isToPopulate('image', req)) {
         query.populate({
             path: 'image',
-            select: { url: 1, _id: 0 },
+            select: { url: 1, _id: 1 },
         })
     }
     if (isToPopulate('parent', req)) {
         query.populate({
             path: 'parent',
-            select: { _id: 0, name: 1, slug: 1 },
+            select: { _id: 1, name: 1, slug: 1 },
         })
     }
 
@@ -160,6 +162,39 @@ export const getManyCategory = catchAsyncHandler(async (req, res) => {
         status: 'success',
         results: transformedDocCategories.length,
         data: transformedDocCategories,
+    })
+})
+
+/**
+ ** ==========================================================
+ ** searchCategory - Get one or more category via searching
+ ** ==========================================================
+ */
+export const searchCategory = catchAsyncHandler(async (req, res) => {
+    //1) Get search query from params
+    const query = req.params.query
+
+    //2) Search for media
+    const DocsCategory = await Category.find({ $text: { $search: query } })
+
+    //3) Transormed DocsCategory to have the full url for images
+    const transformedDocsCategory = DocsCategory.map((category) => {
+        if (category?.image instanceof Media)
+            return {
+                ...category.toJSON(),
+                image: {
+                    url: makeUrlComplete(category.image.url, req),
+                },
+            }
+
+        return category
+    })
+
+    //4) Send a response
+    res.status(200).json({
+        status: 'success',
+        results: transformedDocsCategory.length,
+        data: transformedDocsCategory,
     })
 })
 
