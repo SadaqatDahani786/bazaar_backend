@@ -1,6 +1,6 @@
 import express from 'express'
 import multerUpload from '../packages/multer'
-import { isAuthenticated } from '../controllers/auth'
+import { isAuthenticated, isAuthorized } from '../controllers/auth'
 import { imageToMedia } from '../controllers/media'
 import {
     createReview,
@@ -10,6 +10,7 @@ import {
     setFilterQueryProductId,
     filterAndTransformTheBody,
     updateReview,
+    searchReview,
 } from '../controllers/review'
 
 /**
@@ -39,6 +40,13 @@ Router.route('/')
         filterAndTransformTheBody,
         createReview
     )
+
+//[Retrieve] review via search
+Router.route('/search/:query').get(
+    isAuthenticated,
+    isAuthorized('admin'),
+    searchReview
+)
 
 //[Retrieve] [Modify] [Remove] a review by its id
 Router.route('/:id')

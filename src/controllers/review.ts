@@ -100,7 +100,7 @@ export const createReview = catchAsyncHandler(
         await DocReview.populate({
             path: 'product author images',
             select: {
-                _id: 0,
+                _id: 1,
                 url: 1,
                 name: 1,
                 title: 1,
@@ -147,19 +147,19 @@ export const getReview = catchAsyncHandler(
         if (isToPopulate('images', req)) {
             query.populate({
                 path: 'images',
-                select: { url: 1, _id: 0 },
+                select: { url: 1, _id: 1 },
             })
         }
         if (isToPopulate('product', req)) {
             query.populate({
                 path: 'product',
-                select: { title: 1, _id: 0 },
+                select: { title: 1, _id: 1 },
             })
         }
         if (isToPopulate('author', req)) {
             query.populate({
                 path: 'author',
-                select: { name: 1, _id: 0 },
+                select: { name: 1, _id: 1 },
             })
         }
 
@@ -216,19 +216,19 @@ export const getManyReview = catchAsyncHandler(
         if (isToPopulate('images', req)) {
             query.populate({
                 path: 'images',
-                select: { url: 1, _id: 0 },
+                select: { url: 1, _id: 1, title: 1 },
             })
         }
         if (isToPopulate('product', req)) {
             query.populate({
                 path: 'product',
-                select: { title: 1, _id: 0 },
+                select: { title: 1, _id: 1 },
             })
         }
         if (isToPopulate('author', req)) {
             query.populate({
                 path: 'author',
-                select: { name: 1, _id: 0 },
+                select: { name: 1, username: 1, _id: 1 },
             })
         }
 
@@ -267,6 +267,44 @@ export const getManyReview = catchAsyncHandler(
         })
     }
 )
+
+/**
+ ** ==========================================================
+ ** searchReview - Get one or more review via searching
+ ** ==========================================================
+ */
+export const searchReview = catchAsyncHandler(async (req, res) => {
+    //1) Get search query from params
+    const query = req.params.query
+
+    //2) Search for media
+    const DocsReview = await Review.find({ $text: { $search: query } })
+
+    //3) Make url complete for image
+    const tranformedDocsReview = DocsReview.map((review) => {
+        //=> Transform images
+        const tranformedImages: { url: string }[] = []
+        review?.images?.map((media) => {
+            if (media instanceof Media)
+                tranformedImages.push({
+                    url: makeUrlComplete(media.url, req),
+                })
+        })
+
+        //=> Return
+        return {
+            ...review.toJSON(),
+            images: tranformedImages.length > 0 ? tranformedImages : undefined,
+        }
+    })
+
+    //4) Send a response
+    res.status(200).json({
+        status: 'success',
+        results: tranformedDocsReview.length,
+        data: tranformedDocsReview,
+    })
+})
 
 /**
  ** ==========================================================
@@ -337,7 +375,7 @@ export const updateReview = catchAsyncHandler(
         ).populate({
             path: 'product author images',
             select: {
-                _id: 0,
+                _id: 1,
                 url: 1,
                 name: 1,
                 title: 1,
