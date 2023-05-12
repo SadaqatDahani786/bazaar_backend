@@ -39,7 +39,7 @@ Router.route('/login').post(login)
 
 Router.route('/logout').post(logout)
 
-Router.route('/update-password').post(isAuthenticated, updatePassword)
+Router.route('/update-password').put(isAuthenticated, updatePassword)
 
 Router.route('/forgot-password').post(forgotPassword)
 

@@ -151,6 +151,12 @@ export const subSchemaUserAddress = {
             message: 'Must provide a valid zip code for an address.',
         },
     },
+    address: {
+        type: String,
+        required: [true, 'Must provide "address" for an address.'],
+        maxlength: [60, 'Address must be 60 characters long or less.'],
+        trim: true,
+    },
     property_type: {
         type: String,
         enum: ['house', 'apartment', 'business', 'other'],
