@@ -29,11 +29,12 @@ export const createProduct = catchAsyncHandler(
             title: req.body.title,
             description: req.body.description,
             price: req.body.price,
-            selling_price: req.body.price,
+            selling_price: req.body.selling_price,
             image: req.body.image,
-            image_gallery: req.body.image_gallery,
+            image_gallery:
+                req.body.image_gallery && JSON.parse(req.body.image_gallery),
             stock: req.body.stock,
-            categories: req.body.categories,
+            categories: req.body.categories && JSON.parse(req.body.categories),
             manufacturing_details: {
                 brand: req.body.manufacturing_details?.brand,
                 model_number: req.body.manufacturing_details?.model_number,
@@ -47,13 +48,11 @@ export const createProduct = catchAsyncHandler(
                 },
                 weight: req.body.shipping?.weight,
             },
-            variants: {
-                color: req.body.variants?.color,
-                size: req.body.variants?.size,
-                custom: req.body.variants?.custom,
-            },
+            variants: req.body.variants && JSON.parse(req.body.variants),
             staff_picked: req.body.staff_picked,
         }
+
+        console.log(productToBeCreated)
 
         //2) Create product
         const DocProduct = await Product.create(productToBeCreated)
@@ -468,6 +467,52 @@ export const getTrendingItemsInYourArea = catchAsyncHandler(
 
 /**
  ** ==========================================================
+ ** searchProduct - Get one or more product via searching
+ ** ==========================================================
+ */
+export const searchProduct = catchAsyncHandler(async (req, res) => {
+    //1) Get search query from params
+    const query = req.params.query
+
+    //2) Search for media
+    const DocsProduct = await Product.find({ $text: { $search: query } })
+
+    //3) Make url complete for image
+    const tranformedDocsProduct = DocsProduct.map((prod) => {
+        //=> Transform image gallery
+        const tranformedImageGallery: { url: string }[] = []
+        prod?.image_gallery?.map((media) => {
+            if (media instanceof Media)
+                tranformedImageGallery.push({
+                    url: makeUrlComplete(media.url, req),
+                })
+        })
+
+        //=> Transform Image
+        const transformedImage: { url: string } = { url: '' }
+        if (prod.image instanceof Media)
+            transformedImage.url = makeUrlComplete(prod.image.url, req)
+
+        //=> Return
+        return {
+            ...prod.toJSON(),
+            image: transformedImage.url ? transformedImage : undefined,
+            image_gallery:
+                tranformedImageGallery.length > 0
+                    ? tranformedImageGallery
+                    : undefined,
+        }
+    })
+    //4) Send a response
+    res.status(200).json({
+        status: 'success',
+        results: tranformedDocsProduct.length,
+        data: tranformedDocsProduct,
+    })
+})
+
+/**
+ ** ==========================================================
  ** updateProduct - Update a single product
  ** ==========================================================
  */
@@ -500,11 +545,7 @@ export const updateProduct = catchAsyncHandler(
                 },
                 weight: req.body.shipping?.weight,
             },
-            variants: {
-                color: req.body.variants?.color,
-                size: req.body.variants?.size,
-                custom: req.body.variants?.custom,
-            },
+            variants: req.body.variants,
             staff_picked: req.body.staff_picked,
         }
 

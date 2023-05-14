@@ -9,6 +9,7 @@ import {
     getSimilarViewedItems,
     getTotalProductsCount,
     getTrendingItemsInYourArea,
+    searchProduct,
     updateProduct,
 } from '../controllers/product'
 import RouterReview from './review'
@@ -34,6 +35,9 @@ Router.use('/:prodId/review', RouterReview)
  ** Routes
  ** ====================================
  */
+
+//[Retrieve] one or many product via search
+Router.route('/search/:query').get(searchProduct)
 
 //[Retrieve] trending items in your area
 Router.route('/trending-items-in-your-area').get(

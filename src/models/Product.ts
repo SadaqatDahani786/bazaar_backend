@@ -30,45 +30,20 @@ export interface IProduct {
         }
         weight: number
     }
-    variants: {
-        color?: [
-            | 'Aqua'
-            | 'Crimson'
-            | 'Black'
-            | 'Blue'
-            | 'Brown'
-            | 'Gold'
-            | 'Gray'
-            | 'Green'
-            | 'Orange'
-            | 'Pink'
-            | 'Purple'
-            | 'Red'
-            | 'Teal'
-            | 'Violet'
-            | 'White'
-            | 'Yellow'
-        ]
-
-        size?: [
-            {
-                type: string
-                enum: ['XS', 'S', 'M', 'L', 'XL']
-            }
-        ]
-        custom?: [
-            {
-                name: string
-                terms: [
-                    {
-                        name: string
-                        image: ObjectId
-                    }
-                ]
-            }
-        ]
-    }
+    variants: [
+        {
+            name: string
+            variant_type: 'color' | 'size' | 'other'
+            terms: [
+                {
+                    name: string
+                    image: ObjectId
+                }
+            ]
+        }
+    ]
     staff_picked?: boolean
+    created_at?: Date
 }
 
 /**
@@ -218,55 +193,46 @@ const schemaProduct = new Schema<IProduct>({
             required: [true, 'Must provide product weight in kg.'],
         },
     },
-    variants: {
-        color: [
-            {
+    variants: [
+        {
+            name: {
                 type: String,
-                enum: [
-                    'Aqua',
-                    'Crimson',
-                    'Black',
-                    'Blue',
-                    'Brown',
-                    'Gold',
-                    'Gray',
-                    'Green',
-                    'Orange',
-                    'Pink',
-                    'Purple',
-                    'Red',
-                    'Teal',
-                    'Violet',
-                    'White',
-                    'Yellow',
-                ],
             },
-        ],
-        size: [
-            {
+            variant_type: {
                 type: String,
-                enum: ['XS', 'S', 'M', 'L', 'XL'],
+                enum: ['color', 'size', 'other'],
             },
-        ],
-        custom: [
-            {
-                name: String,
-                terms: [
-                    {
-                        name: String,
-                        image: {
-                            type: ObjectId,
-                            ref: 'Media',
-                        },
+            terms: [
+                {
+                    name: {
+                        type: String,
                     },
-                ],
-            },
-        ],
-    },
+                    image: {
+                        type: ObjectId,
+                        ref: 'Media',
+                    },
+                },
+            ],
+        },
+    ],
     staff_picked: {
         type: Boolean,
         default: false,
     },
+    created_at: {
+        type: Date,
+        default: Date.now(),
+    },
+})
+
+/**
+ ** ====================================
+ ** Indexes
+ ** ====================================
+ */
+schemaProduct.index({
+    title: 'text',
+    description: 'text',
 })
 
 /**
