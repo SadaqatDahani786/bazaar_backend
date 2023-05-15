@@ -52,8 +52,6 @@ export const createProduct = catchAsyncHandler(
             staff_picked: req.body.staff_picked,
         }
 
-        console.log(productToBeCreated)
-
         //2) Create product
         const DocProduct = await Product.create(productToBeCreated)
 
@@ -61,9 +59,10 @@ export const createProduct = catchAsyncHandler(
         await DocProduct.populate({
             path: 'image image_gallery categories',
             select: {
-                _id: 0,
+                _id: 1,
                 url: 1,
                 name: 1,
+                title: 1,
                 slug: 1,
                 parent: 1,
             },
@@ -111,19 +110,19 @@ export const getProduct = catchAsyncHandler(
         if (isToPopulate('image', req)) {
             query.populate({
                 path: 'image',
-                select: { url: 1, _id: 0 },
+                select: { url: 1, _id: 1, title: 1 },
             })
         }
         if (isToPopulate('image_gallery', req)) {
             query.populate({
                 path: 'image_gallery',
-                select: { url: 1, _id: 0 },
+                select: { url: 1, _id: 1, title: 1 },
             })
         }
         if (isToPopulate('categories', req)) {
             query.populate({
                 path: 'categories',
-                select: { name: 1, slug: 1, parent: 1, _id: 0 },
+                select: { name: 1, slug: 1, parent: 1, _id: 1 },
             })
         }
 
@@ -193,19 +192,19 @@ export const getManyProduct = catchAsyncHandler(
         if (isToPopulate('image', req)) {
             query.populate({
                 path: 'image',
-                select: { url: 1, _id: 0 },
+                select: { url: 1, _id: 1, title: 1 },
             })
         }
         if (isToPopulate('image_gallery', req)) {
             query.populate({
                 path: 'image_gallery',
-                select: { url: 1, _id: 0 },
+                select: { url: 1, _id: 1, title: 1 },
             })
         }
         if (isToPopulate('categories', req)) {
             query.populate({
                 path: 'categories',
-                select: { name: 1, slug: 1, parent: 1, _id: 0 },
+                select: { name: 1, slug: 1, parent: 1, _id: 1 },
             })
         }
 
@@ -527,11 +526,12 @@ export const updateProduct = catchAsyncHandler(
             title: req.body.title,
             description: req.body.description,
             price: req.body.price,
-            selling_price: req.body.price,
-            stock: req.body.stock,
+            selling_price: req.body.selling_price,
             image: req.body.image,
-            image_gallery: req.body.image_gallery,
-            categories: req.body.categories,
+            image_gallery:
+                req.body.image_gallery && JSON.parse(req.body.image_gallery),
+            stock: req.body.stock,
+            categories: req.body.categories && JSON.parse(req.body.categories),
             manufacturing_details: {
                 brand: req.body.manufacturing_details?.brand,
                 model_number: req.body.manufacturing_details?.model_number,
@@ -545,7 +545,7 @@ export const updateProduct = catchAsyncHandler(
                 },
                 weight: req.body.shipping?.weight,
             },
-            variants: req.body.variants,
+            variants: req.body.variants && JSON.parse(req.body.variants),
             staff_picked: req.body.staff_picked,
         }
 
@@ -556,7 +556,10 @@ export const updateProduct = catchAsyncHandler(
             {
                 new: true,
             }
-        ).populate({ path: 'image image_gallery', select: { _id: 0, url: 1 } })
+        ).populate({
+            path: 'image image_gallery',
+            select: { _id: 1, url: 1, title: 1 },
+        })
 
         //4) If no document found, throw err
         if (!DocProduct) {
