@@ -474,7 +474,12 @@ export const searchProduct = catchAsyncHandler(async (req, res) => {
     const query = req.params.query
 
     //2) Search for media
-    const DocsProduct = await Product.find({ $text: { $search: query } })
+    const DocsProduct = await Product.find({
+        $text: { $search: query },
+    }).populate({
+        path: 'image',
+        select: { url: 1, _id: 1, title: 1 },
+    })
 
     //3) Make url complete for image
     const tranformedDocsProduct = DocsProduct.map((prod) => {
@@ -502,6 +507,7 @@ export const searchProduct = catchAsyncHandler(async (req, res) => {
                     : undefined,
         }
     })
+
     //4) Send a response
     res.status(200).json({
         status: 'success',

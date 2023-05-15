@@ -34,15 +34,16 @@ export const createOrder = catchAsyncHandler(
         //1) Get orderToBeCreated from req body
         const orderToBeCreated: IOrder = {
             customer: req.body.customer,
-            products: req.body.products,
+            products: JSON.parse(req.body.products),
             delivery_status: req.body.delivery_status,
             shipping: {
-                address: req.body.shipping?.address,
+                address: JSON.parse(req.body.shipping?.address),
             },
             billing: {
-                address: req.body.billing?.address,
+                address: JSON.parse(req.body.billing?.address),
                 payment_method: req.body.billing?.payment_method,
                 paid_amount: req.body.billing?.paid_amount,
+                transaction_id: req.body.billing?.transaction_id,
             },
             created_at: req.body.created_at,
         }
@@ -152,7 +153,7 @@ export const getManyOrder = catchAsyncHandler(
         }
 
         //7) Send a response
-        res.status(400).json({
+        res.status(200).json({
             status: 'success',
             results: DocsOrder.length,
             data: DocsOrder,

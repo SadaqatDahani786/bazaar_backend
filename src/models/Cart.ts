@@ -1,6 +1,5 @@
 import { ObjectId } from 'mongodb'
 import { model, Schema } from 'mongoose'
-import { Color, Size, CustomVariant } from '../types/variants'
 
 /**
  ** ====================================
@@ -11,11 +10,10 @@ export interface ICart {
     owner: ObjectId
     products: Array<{
         product: ObjectId
-        selected_variants: {
-            color: Color
-            size: Size
-            custom: CustomVariant
-        }
+        selected_variants: Array<{
+            name: string
+            term: string
+        }>
         quantity: number
     }>
     is_owner_notified?: boolean
@@ -44,59 +42,24 @@ const schemaCart = new Schema<ICart>({
                     'Must provide id of the product which to be add into the cart',
                 ],
             },
-            selected_variants: {
-                color: {
-                    type: String,
-                    enum: [
-                        'Aqua',
-                        'Crimson',
-                        'Black',
-                        'Blue',
-                        'Brown',
-                        'Gold',
-                        'Gray',
-                        'Green',
-                        'Orange',
-                        'Pink',
-                        'Purple',
-                        'Red',
-                        'Teal',
-                        'Violet',
-                        'White',
-                        'Yellow',
-                    ],
-                    required: [
-                        true,
-                        'Must provide selected color variant of the product.',
-                    ],
-                },
-                size: {
-                    type: String,
-                    enum: ['XS', 'S', 'M', 'L', 'XL'],
-                    required: [
-                        true,
-                        'Must provide selected size variant of the product.',
-                    ],
-                },
-                custom: [
-                    {
-                        name: {
-                            type: String,
-                            required: [
-                                true,
-                                'Custom variation name value must be provided',
-                            ],
-                        },
-                        term: {
-                            type: String,
-                            required: [
-                                true,
-                                'Custom variation term value must be provided.',
-                            ],
-                        },
+            selected_variants: [
+                {
+                    name: {
+                        type: String,
+                        required: [
+                            true,
+                            'Variation name value must be provided',
+                        ],
                     },
-                ],
-            },
+                    term: {
+                        type: String,
+                        required: [
+                            true,
+                            'Variation term value must be provided.',
+                        ],
+                    },
+                },
+            ],
             quantity: {
                 type: Number,
                 default: 1,

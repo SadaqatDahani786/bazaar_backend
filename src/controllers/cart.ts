@@ -8,7 +8,6 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 import Cart from '../models/Cart'
 import Product from '../models/Product'
 import { ObjectId } from 'mongodb'
-import { Color, Size, CustomVariant } from '../types/variants'
 
 //Utils & Packages
 import { isToPopulate } from '../utils/isToPopulate'
@@ -226,11 +225,7 @@ export const addItemInCart = catchAsyncHandler(
         } else {
             DocCart.products?.push({
                 product: productId,
-                selected_variants: {
-                    color: req.body.color as Color,
-                    size: req.body.size as Size,
-                    custom: req.body.custom as CustomVariant,
-                },
+                selected_variants: req.body.selected_variants,
                 quantity: quantity,
             })
         }
@@ -319,11 +314,7 @@ export const removeItemFromCart = catchAsyncHandler(
             else
                 DocCart.products?.push({
                     product: productId,
-                    selected_variants: {
-                        color: req.body.color as Color,
-                        size: req.body.size as Size,
-                        custom: req.body.custom as CustomVariant,
-                    },
+                    selected_variants: req.body.selected_variants,
                     quantity: quantity,
                 })
 
