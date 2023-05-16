@@ -165,6 +165,14 @@ export const subSchemaUserAddress = {
             'Must provide "property_type" of one of these values: "house", "apartment", "business" or "other".',
         ],
     },
+    default_billing_address: {
+        type: Boolean,
+        default: false,
+    },
+    default_shipping_address: {
+        type: Boolean,
+        default: false,
+    },
 }
 
 /**
@@ -265,14 +273,6 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     addresses: [
         {
             ...subSchemaUserAddress,
-            default_billing_address: {
-                type: Boolean,
-                default: false,
-            },
-            default_shipping_address: {
-                type: Boolean,
-                default: false,
-            },
         },
     ],
     role: {

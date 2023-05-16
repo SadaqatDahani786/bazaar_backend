@@ -10,6 +10,9 @@ import Order, { IOrder } from '../models/Order'
 //Utils & Packages
 import { isToPopulate } from '../utils/isToPopulate'
 import QueryModifier from '../packages/QueryModifier'
+import Product from '../models/Product'
+import Media from '../models/Media'
+import makeUrlComplete from '../utils/makeUrlComplete'
 
 /**
  ** ==========================================================
@@ -37,10 +40,18 @@ export const createOrder = catchAsyncHandler(
             products: JSON.parse(req.body.products),
             delivery_status: req.body.delivery_status,
             shipping: {
-                address: JSON.parse(req.body.shipping?.address),
+                address: {
+                    ...JSON.parse(req.body.shipping?.address),
+                    default_billing_address: false,
+                    default_shipping_address: true,
+                },
             },
             billing: {
-                address: JSON.parse(req.body.billing?.address),
+                address: {
+                    ...JSON.parse(req.body.billing?.address),
+                    default_billing_address: true,
+                    default_shipping_address: false,
+                },
                 payment_method: req.body.billing?.payment_method,
                 paid_amount: req.body.billing?.paid_amount,
                 transaction_id: req.body.billing?.transaction_id,
@@ -97,13 +108,39 @@ export const getOrder = catchAsyncHandler(
             query.populate('customer')
         }
         if (isToPopulate('products', req)) {
-            query.populate('products.product')
+            query.populate({
+                path: 'products.product',
+                populate: {
+                    path: 'image',
+                    model: 'Media',
+                },
+            })
         }
 
         //5) Exec query and retrive the matching doc found
         const DocOrder = await queryModifier.query.exec()
 
-        //6) If no doc found, throw err
+        //6) Make url complete for image
+        const transformedProducts = DocOrder?.products.map((prod) => {
+            if (
+                prod.product instanceof Product &&
+                prod.product.image instanceof Media
+            ) {
+                return {
+                    quantity: prod.quantity,
+                    selected_variants: prod.selected_variants,
+                    product: {
+                        ...prod.product.toObject(),
+                        image: {
+                            ...prod.product.image.toObject(),
+                            url: makeUrlComplete(prod.product.image.url, req),
+                        },
+                    },
+                }
+            }
+        })
+
+        //7) If no doc found, throw err
         if (!DocOrder) {
             throw new AppError(
                 'No order document found to be retrieved with the id provided.',
@@ -111,10 +148,13 @@ export const getOrder = catchAsyncHandler(
             )
         }
 
-        //7) Send a response
-        res.status(400).json({
+        //8) Send a response
+        res.status(200).json({
             status: 'success',
-            data: DocOrder,
+            data: {
+                ...DocOrder.toJSON(),
+                products: transformedProducts,
+            },
         })
     }
 )
@@ -275,13 +315,21 @@ export const updateOrder = catchAsyncHandler(
         //2) Get orderToBeUpdated from req body
         const orderToBeUpdated: IOrder = {
             customer: req.body.customer,
-            products: req.body.products,
+            products: JSON.parse(req.body.products),
             delivery_status: req.body.delivery_status,
             shipping: {
-                address: req.body.shipping?.address,
+                address: {
+                    ...JSON.parse(req.body.shipping.address),
+                    default_billing_address: false,
+                    default_shipping_address: true,
+                },
             },
             billing: {
-                address: req.body.billing?.address,
+                address: {
+                    ...JSON.parse(req.body.billing.address),
+                    default_billing_address: true,
+                    default_shipping_address: false,
+                },
                 payment_method: req.body.billing?.payment_method,
                 paid_amount: req.body.billing?.paid_amount,
             },
