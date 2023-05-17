@@ -7,6 +7,7 @@ import {
     getManyProduct,
     getProduct,
     getSimilarViewedItems,
+    getTopSellingProducts,
     getTotalProductsCount,
     getTrendingItemsInYourArea,
     searchProduct,
@@ -47,6 +48,9 @@ Router.route('/trending-items-in-your-area').get(
 
 //[Retrieve] similar viewed items
 Router.route('/similar-viewed-items/:prodId').get(getSimilarViewedItems)
+
+//[Retrieve] top seeling items
+Router.route('/top-selling-products').get(getTopSellingProducts)
 
 //[Retrieve] frequently bought together items
 Router.route('/frequently-bought-together/:prodId').get(

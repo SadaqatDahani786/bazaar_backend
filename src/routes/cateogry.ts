@@ -5,6 +5,7 @@ import {
     deleteCategory,
     getCategory,
     getManyCategory,
+    getTotalSalesInEachCategory,
     searchCategory,
     updateCategory,
 } from '../controllers/category'
@@ -21,6 +22,13 @@ const Router = express.Router()
  ** Routes
  ** ====================================
  */
+//[Retrieve] sales in each category
+Router.route('/sales-in-each-category').get(
+    isAuthenticated,
+    isAuthorized('admin'),
+    getTotalSalesInEachCategory
+)
+
 //[Retrieve] many category or [Create] a category
 Router.route('/')
     .get(getManyCategory)

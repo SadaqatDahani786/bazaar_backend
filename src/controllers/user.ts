@@ -328,74 +328,6 @@ export const getManyUser = catchAsyncHandler(
 
 /**
  ** ==========================================================
- ** getUsersCountThisMonth - Get users count this month
- ** ==========================================================
- */
-export const getUsersCountThisMonth = catchAsyncHandler(
-    async (req: Request, res: Response) => {
-        //1) Date of this month
-        const dateThisMonth = new Date()
-        dateThisMonth.setDate(1)
-
-        //2) Date of previous month
-        const datePrevMonth = new Date()
-        datePrevMonth.setDate(1)
-        datePrevMonth.setMonth(datePrevMonth.getMonth() - 1)
-
-        //3) Total users count in this month
-        const UsersThisMonth = await User.aggregate([
-            {
-                $match: { created_at: { $gte: dateThisMonth } },
-            },
-            {
-                $count: 'users_count',
-            },
-        ])
-
-        //4) Total users count in the previous month
-        const UsersPrevMonth = await User.aggregate([
-            {
-                $match: { created_at: { $lt: dateThisMonth } },
-            },
-            {
-                $count: 'users_count',
-            },
-        ])
-
-        //5) Calc percentage of new users this month
-        const usersCountThisMonth = UsersThisMonth[0]?.users_count || 0
-        const usersCountPrevMonth = UsersPrevMonth[0]?.users_count || 0
-        const changeInUsersCount =
-            ((usersCountThisMonth - usersCountPrevMonth) /
-                usersCountPrevMonth) *
-            100
-
-        //6) Cap percetange between 0% and 100%
-        let changeInUsersCountPercentage
-        if (isNaN(changeInUsersCount)) {
-            changeInUsersCountPercentage = '0.00%'
-        } else if (changeInUsersCount === Infinity) {
-            changeInUsersCountPercentage = '100.00'
-        } else {
-            changeInUsersCount.toFixed(2).toString() + '%'
-        }
-
-        //7) Send a response
-        res.status(200).json({
-            status: 'success',
-            data: {
-                users_count: usersCountThisMonth,
-                users_growth_percentage: changeInUsersCountPercentage,
-                month: dateThisMonth.toLocaleString('default', {
-                    month: 'long',
-                }),
-            },
-        })
-    }
-)
-
-/**
- ** ==========================================================
  ** getTotalUsersCount - Get the count of total users
  ** ==========================================================
  */
@@ -408,11 +340,44 @@ export const getTotalusersCount = catchAsyncHandler(
             },
         ])
 
+        //2) Get count in months of year
+        const usersCountInMonthsOfYear = await User.aggregate([
+            {
+                $group: {
+                    _id: {
+                        $month: '$created_at',
+                    },
+                    users: { $sum: 1 },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    month: '$_id',
+                    users: 1,
+                },
+            },
+        ])
+
+        //3) Transform users count this year
+        const transformedUsersThisYear = usersCountInMonthsOfYear.map(
+            (doc) => ({
+                users: doc?.users || 0,
+                month: new Date(`2022-${doc.month}-01`).toLocaleString(
+                    'default',
+                    {
+                        month: 'short',
+                    }
+                ),
+            })
+        )
+
         //2) Send a response
         res.status(200).json({
             status: 'success',
             data: {
-                total_users_count: usersCount[0].users_count,
+                total_users: usersCount[0].users_count,
+                users_in_months_of_year: transformedUsersThisYear,
             },
         })
     }

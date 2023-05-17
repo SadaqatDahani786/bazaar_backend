@@ -9,7 +9,6 @@ import {
     getManyUser,
     getTotalusersCount,
     getUser,
-    getUsersCountThisMonth,
     searchUser,
     setUserId,
     updateUser,
@@ -69,9 +68,6 @@ Router.route('/search/:query').get(searchUser)
 
 //[Retrieve] total users count
 Router.route('/total-users-count').get(getTotalusersCount)
-
-//[Retrieve] users count this month
-Router.route('/users-count-this-month').get(getUsersCountThisMonth)
 
 //[Retrieve] many user or [Create] a user
 Router.route('/')

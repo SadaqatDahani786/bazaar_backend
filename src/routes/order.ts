@@ -7,6 +7,7 @@ import {
     getOrder,
     getSalesInMonthsOfYear,
     getTotalOrdersCount,
+    getTotalRefunds,
     getTotalSales,
     setUserId,
     updateOrder,
@@ -44,6 +45,9 @@ Router.use(isAuthorized('admin'))
 
 //[Retrieve] total sales
 Router.route('/total-sales').get(getTotalSales)
+
+//[Retrieve] total refunds
+Router.route('/total-refunds').get(getTotalRefunds)
 
 //[Retrieve] total sales summary
 Router.route('/sales-in-months-of-year/:year').get(getSalesInMonthsOfYear)

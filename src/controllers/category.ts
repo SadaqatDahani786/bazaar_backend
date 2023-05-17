@@ -15,6 +15,7 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Query Modifier
 import QueryModifier from '../packages/QueryModifier'
+import Order from '../models/Order'
 
 /**
  ** ==========================================================
@@ -164,6 +165,77 @@ export const getManyCategory = catchAsyncHandler(async (req, res) => {
         data: transformedDocCategories,
     })
 })
+
+/**
+ ** ==========================================================
+ ** getTotalSalesInEachCategory - Get the tatal sales in each category
+ ** ==========================================================
+ */
+export const getTotalSalesInEachCategory = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get sales in each category via aggregation
+        const SalesInEachCategory = await Order.aggregate([
+            {
+                $unwind: {
+                    path: '$products',
+                },
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'products.product',
+                    foreignField: '_id',
+                    as: 'product',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$product',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$product.categories',
+                },
+            },
+            {
+                $group: {
+                    _id: '$product.categories',
+                    sales: { $sum: '$billing.paid_amount' },
+                    orders: { $sum: '$products.quantity' },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'categories',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'category',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$category',
+                },
+            },
+            {
+                $sort: {
+                    sales: -1,
+                },
+            },
+            {
+                $limit: 6,
+            },
+        ])
+
+        //2) Send Response
+        res.status(200).json({
+            status: 'success',
+            results: SalesInEachCategory.length,
+            data: SalesInEachCategory,
+        })
+    }
+)
 
 /**
  ** ==========================================================

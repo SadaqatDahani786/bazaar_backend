@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { ObjectId } from 'mongodb'
 
 //Models & Types
-import Media from '../models/Media'
+import Media, { IMedia } from '../models/Media'
 import User from '../models/User'
 import Order from '../models/Order'
 import Product, { IProduct } from '../models/Product'
@@ -279,6 +279,80 @@ export const getTotalProductsCount = catchAsyncHandler(
     }
 )
 
+/**
+ ** ==========================================================
+ ** getTopSellingProducts - Get top selling products
+ ** ==========================================================
+ */
+export const getTopSellingProducts = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get top selling products
+        const DocsProduct = await Order.aggregate([
+            {
+                $unwind: {
+                    path: '$products',
+                },
+            },
+            {
+                $group: {
+                    _id: '$products.product',
+                    sold: { $sum: '$products.quantity' },
+                    sales: { $sum: '$billing.paid_amount' },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'product',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$product',
+                },
+            },
+            {
+                $lookup: {
+                    from: 'media',
+                    localField: 'product.image',
+                    foreignField: '_id',
+                    as: 'image',
+                },
+            },
+            { $unwind: { path: '$image', preserveNullAndEmptyArrays: true } },
+            {
+                $sort: {
+                    sold: -1,
+                },
+            },
+        ])
+
+        //2) Transform to make url complete
+        const transformedDocs = DocsProduct.map(
+            (prod: { product: IProduct; image: IMedia }) => {
+                if (prod.image) {
+                    return {
+                        ...prod,
+                        image: {
+                            ...prod.image,
+                            url: makeUrlComplete(prod.image.url, req),
+                        },
+                    }
+                }
+                return prod
+            }
+        )
+
+        //3) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: transformedDocs.length,
+            data: transformedDocs,
+        })
+    }
+)
 /**
  ** ==========================================================
  ** getFrequentlyBoughtTogether - Get frequently bought together items

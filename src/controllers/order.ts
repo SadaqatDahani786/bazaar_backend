@@ -6,12 +6,12 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Model & Types
 import Order, { IOrder } from '../models/Order'
+import Product from '../models/Product'
+import Media from '../models/Media'
 
 //Utils & Packages
 import { isToPopulate } from '../utils/isToPopulate'
 import QueryModifier from '../packages/QueryModifier'
-import Product from '../models/Product'
-import Media from '../models/Media'
 import makeUrlComplete from '../utils/makeUrlComplete'
 
 /**
@@ -122,22 +122,21 @@ export const getOrder = catchAsyncHandler(
 
         //6) Make url complete for image
         const transformedProducts = DocOrder?.products.map((prod) => {
-            if (
-                prod.product instanceof Product &&
-                prod.product.image instanceof Media
-            ) {
+            if (prod.product instanceof Product) {
                 return {
                     quantity: prod.quantity,
                     selected_variants: prod.selected_variants,
                     product: {
                         ...prod.product.toObject(),
-                        image: {
+                        image: prod.product.image instanceof Media && {
                             ...prod.product.image.toObject(),
                             url: makeUrlComplete(prod.product.image.url, req),
                         },
                     },
                 }
             }
+
+            return prod
         })
 
         //7) If no doc found, throw err
@@ -235,16 +234,79 @@ export const getTotalSales = catchAsyncHandler(
         //1) Calc total sales via aggregation
         const TotalSales = await Order.aggregate([
             {
-                $group: { _id: null, income: { $sum: '$billing.paid_amount' } },
+                $group: {
+                    _id: null,
+                    sales: { $sum: '$billing.paid_amount' },
+                    orders: { $sum: 1 },
+                },
             },
-            { $project: { _id: 0, income: 1 } },
+            { $project: { _id: 0, sales: 1, orders: 1 } },
         ])
 
         //2) Send a response
         res.status(200).json({
             status: 'success',
             data: {
-                total_sales: TotalSales[0].income,
+                total_sales: TotalSales[0]?.sales || 0,
+                total_orders: TotalSales[0]?.orders || 0,
+            },
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getTotalRefunds - Get the tatal of refunds
+ ** ==========================================================
+ */
+export const getTotalRefunds = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Calc total refunds via aggregation
+        const totalRefunds = await Order.aggregate([
+            {
+                $match: { delivery_status: { $eq: 'refunded' } },
+            },
+            {
+                $group: { _id: null, amount: { $sum: '$billing.paid_amount' } },
+            },
+            { $project: { _id: 0, amount: 1 } },
+        ])
+
+        //2) Calc total refunds this year
+        const totalRefundsInMonthsOfYear = await Order.aggregate([
+            {
+                $match: {
+                    delivery_status: { $eq: 'refunded' },
+                },
+            },
+            {
+                $group: {
+                    _id: { $month: '$created_at' },
+                    amount: { $sum: '$billing.paid_amount' },
+                },
+            },
+            { $project: { _id: 0, month: '$_id', amount: 1 } },
+        ])
+
+        //3) Transform refunds this year
+        const transformedRefundsThisYear = totalRefundsInMonthsOfYear.map(
+            (doc) => ({
+                refunds: doc?.amount || 0,
+                month: new Date(`2022-${doc.month}-01`).toLocaleString(
+                    'default',
+                    {
+                        month: 'short',
+                    }
+                ),
+            })
+        )
+
+        //4) Send a response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                total_refunds: totalRefunds[0]?.amount || 0,
+                refunds_in_months_of_year: transformedRefundsThisYear,
             },
         })
     }
@@ -271,7 +333,8 @@ export const getSalesInMonthsOfYear = catchAsyncHandler(
             {
                 $group: {
                     _id: { $month: '$created_at' },
-                    sales: { $sum: 1 },
+                    orders: { $sum: 1 },
+                    sales: { $sum: '$billing.paid_amount' },
                 },
             },
             {
@@ -281,6 +344,7 @@ export const getSalesInMonthsOfYear = catchAsyncHandler(
                 $project: {
                     _id: 0,
                     month: '$_id',
+                    orders: 1,
                     sales: 1,
                 },
             },
@@ -288,7 +352,8 @@ export const getSalesInMonthsOfYear = catchAsyncHandler(
 
         //3) Transform Sales
         const transformedSales = SalesInMonthsOfYear.map((doc) => ({
-            ...doc,
+            orders: doc?.orders || 0,
+            sales: doc?.sales || 0,
             month: new Date(`2022-${doc.month}-01`).toLocaleString('default', {
                 month: 'short',
             }),
