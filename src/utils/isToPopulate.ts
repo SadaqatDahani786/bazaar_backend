@@ -11,7 +11,6 @@ export const isToPopulate = (path: string, req: Request) => {
         req.query.fields
             ?.toString()
             .split(',')
-            .some((field) => field === path) ||
-        Object.keys(req.query).length <= 0
+            .some((field) => field === path) || !req.query.fields
     )
 }

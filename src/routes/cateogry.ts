@@ -9,6 +9,7 @@ import {
     searchCategory,
     updateCategory,
 } from '../controllers/category'
+import RouterProduct from './product'
 
 /**
  ** ====================================
@@ -16,6 +17,14 @@ import {
  ** ====================================
  */
 const Router = express.Router()
+
+/**
+ ** ====================================
+ ** NESTED ROUTES [PRODUCTS]
+ ** ====================================
+ */
+//Router For Products In A Category
+Router.use('/:id/product', RouterProduct)
 
 /**
  ** ====================================

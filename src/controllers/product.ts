@@ -15,6 +15,32 @@ import AppError from '../error handling/AppError'
 import makeUrlComplete from '../utils/makeUrlComplete'
 import QueryModifier from '../packages/QueryModifier'
 import { isToPopulate } from '../utils/isToPopulate'
+import Category from '../models/Category'
+
+/**
+ ** ==========================================================
+ ** Middleware [setCategoryIdFromParams]
+ ** ==========================================================
+ */
+export const setCategoryIdFromParams = catchAsyncHandler(
+    async (req, res, next) => {
+        //1) Set the id of category from params into query
+        if (req.params.id) {
+            const DocCategory = await Category.findOne({ slug: req.params.id })
+
+            if (!DocCategory)
+                throw new AppError(
+                    `Category doesn't exist with the slug [${req.params.id}]`,
+                    404
+                )
+
+            req.query.categories = DocCategory?._id.toString()
+        }
+
+        //2) Call next middlware in middlware stack
+        next()
+    }
+)
 
 /**
  ** ==========================================================
@@ -204,14 +230,34 @@ export const getManyProduct = catchAsyncHandler(
         if (isToPopulate('categories', req)) {
             query.populate({
                 path: 'categories',
-                select: { name: 1, slug: 1, parent: 1, _id: 1 },
+                select: {
+                    name: 1,
+                    slug: 1,
+                    parent: 1,
+                    _id: 1,
+                    image: 1,
+                    description: 1,
+                },
+                populate: {
+                    path: 'image',
+                    model: 'Media',
+                },
             })
         }
 
         //4) Exec query to retrieve all product docs match found
         const DocsProduct = await QueryModfier.query.exec()
 
-        //5) If no product document found, throw err
+        //5) Create new query and apply modifier just filter only to count documents
+        const DocsCount = await new QueryModifier<typeof query>(
+            Product.find(),
+            req.query
+        )
+            .filter()
+            .query.count()
+            .exec()
+
+        //6) If no product document found, throw err
         if (!DocsProduct) {
             throw new AppError(
                 'No product document found to be retrieved.',
@@ -219,7 +265,7 @@ export const getManyProduct = catchAsyncHandler(
             )
         }
 
-        //6) Make url complete for image
+        //7) Make url complete for image
         const tranformedDocsProduct = DocsProduct.map((prod) => {
             //=> Transform omage gallery
             const tranformedImageGallery: { url: string }[] = []
@@ -235,6 +281,20 @@ export const getManyProduct = catchAsyncHandler(
             if (prod.image instanceof Media)
                 transformedImage.url = makeUrlComplete(prod.image.url, req)
 
+            //=> Transform category mage
+            const transformedCategories = prod.categories?.map((cat) => {
+                if (cat instanceof Category) {
+                    return {
+                        ...cat.toObject(),
+                        image: cat.image instanceof Media && {
+                            ...cat.image.toObject(),
+                            url: makeUrlComplete(cat.image.url, req),
+                        },
+                    }
+                }
+                return cat
+            })
+
             //=> Return
             return {
                 ...prod.toJSON(),
@@ -243,12 +303,14 @@ export const getManyProduct = catchAsyncHandler(
                     tranformedImageGallery.length > 0
                         ? tranformedImageGallery
                         : undefined,
+                categories: transformedCategories,
             }
         })
 
-        //7) Send a response
+        //8) Send a response
         res.status(200).json({
             status: 'success',
+            count: DocsCount,
             results: tranformedDocsProduct.length,
             data: tranformedDocsProduct,
         })
@@ -534,6 +596,160 @@ export const getTrendingItemsInYourArea = catchAsyncHandler(
             status: 'success',
             results: DocsProduct.length,
             data: DocsProduct,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getBrands - Get and extract brands from the products data
+ ** ==========================================================
+ */
+export const getBrands = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Find brand from products documents via aggregation
+        const Brands = await Product.aggregate([
+            {
+                $group: {
+                    _id: '$manufacturing_details.brand',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { count: -1 },
+            },
+            {
+                $project: { _id: 0, brand: '$_id', count: 1 },
+            },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: Brands.length,
+            data: Brands,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getColors - Get and extract colors from the products data
+ ** ==========================================================
+ */
+export const getColors = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //2) Find colors from products documents via aggregation
+        const Colors = await Product.aggregate([
+            {
+                $unwind: { path: '$variants' },
+            },
+            {
+                $match: { 'variants.variant_type': 'color' },
+            },
+            {
+                $unwind: { path: '$variants.terms' },
+            },
+            {
+                $group: {
+                    _id: '$variants.terms.name',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { count: -1 },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    color: '$_id',
+                    count: 1,
+                },
+            },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: Colors.length,
+            data: Colors,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getSizes - Get and extract sizes from the products data
+ ** ==========================================================
+ */
+export const getSizes = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //2) Find sizes from products documents via aggregation
+        const Sizes = await Product.aggregate([
+            {
+                $unwind: { path: '$variants' },
+            },
+            {
+                $match: { 'variants.variant_type': 'size' },
+            },
+            {
+                $unwind: { path: '$variants.terms' },
+            },
+            {
+                $group: {
+                    _id: '$variants.terms.name',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { count: -1 },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    size: '$_id',
+                    count: 1,
+                },
+            },
+        ])
+
+        //2) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: Sizes.length,
+            data: Sizes,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getProduct - Get brands list from the products
+ ** ==========================================================
+ */
+export const getProductBrands = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //3) Find trending products based on customers location
+        const Brands = await Product.aggregate([
+            {
+                $group: {
+                    _id: '$manufacturing_details.brand',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $sort: { count: -1 },
+            },
+            {
+                $project: { _id: 0, brand: '$_id', count: 1 },
+            },
+        ])
+
+        //4) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: Brands.length,
+            data: Brands,
         })
     }
 )

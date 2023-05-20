@@ -78,7 +78,7 @@ app.use(cookieParser())
 app.use(bodyParser.json({ limit: '10kb' }))
 app.use(express.json({ limit: '10kb' }))
 
-app.use(sanitize())
+// app.use(sanitize()) disabled because due to not allowing "." through req
 app.use(xss())
 app.use(hppPrevent.hppPrevent())
 
