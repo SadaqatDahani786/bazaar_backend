@@ -13,21 +13,27 @@ import Review, { IReview } from '../models/Review'
 import { isToPopulate } from '../utils/isToPopulate'
 import makeUrlComplete from '../utils/makeUrlComplete'
 import QueryModifier from '../packages/QueryModifier'
+import { ObjectId } from 'mongodb'
 
 /**
  ** ==========================================================
  ** MIDDLEWARES
  ** ==========================================================
  */
-//=> Set product id into query from params
-export const setFilterQueryProductId = (
+//=> Set filter query
+export const setFilterQuery = (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
+    //=> Set product id
     if (req.params.prodId)
         req.query = { ...req.query, product: req.params.prodId }
 
+    //=> Set user id
+    if (req.user) req.query = { ...req.query, author: req.user._id?.toString() }
+
+    //=> Move to next middleware
     next()
 }
 
@@ -54,7 +60,7 @@ export const createReview = catchAsyncHandler(
             title: req.body.title,
             review: req.body.review,
             rating: req.body.rating,
-            product: req.body.product,
+            product: req.params.prodId ? req.params.prodId : req.body.product,
             author: req.body.author ? req.body.author : req.user._id,
         }
 
@@ -62,7 +68,9 @@ export const createReview = catchAsyncHandler(
         const DocUserReview = await Review.findOne({
             author: req.body.author,
             product: req.body.product,
-        }).populate({ path: 'author' })
+        }).populate({
+            path: 'author',
+        })
 
         //3) Don't allow multiple reviews, throw err
         if (DocUserReview) {
@@ -96,9 +104,9 @@ export const createReview = catchAsyncHandler(
         //6) Create review
         const DocReview = await Review.create(reviewToBeCreated)
 
-        //7) Populate fields
+        //7) Populate product image fields
         await DocReview.populate({
-            path: 'product author images',
+            path: 'product images',
             select: {
                 _id: 1,
                 url: 1,
@@ -107,7 +115,16 @@ export const createReview = catchAsyncHandler(
             },
         })
 
-        //8) Make url complete for images
+        //8) Populate author and author image
+        await DocReview.populate({
+            path: 'author',
+            populate: {
+                path: 'photo',
+                model: 'Media',
+            },
+        })
+
+        //9) Make url complete for images
         const transformedImages: { url: string }[] = []
         DocReview?.images?.map((media) => {
             if (media instanceof Media)
@@ -116,7 +133,17 @@ export const createReview = catchAsyncHandler(
                 })
         })
 
-        //9) Send a response
+        //10) Make url complete for author url
+        if (
+            DocReview.author instanceof User &&
+            DocReview.author.photo instanceof Media
+        )
+            DocReview.author.photo.url = makeUrlComplete(
+                DocReview.author.photo.url,
+                req
+            )
+
+        //11) Send a response
         res.status(201).json({
             status: 'success',
             data: { ...DocReview.toJSON(), images: transformedImages },
@@ -229,18 +256,31 @@ export const getManyReview = catchAsyncHandler(
             query.populate({
                 path: 'author',
                 select: { name: 1, username: 1, _id: 1 },
+                populate: {
+                    path: 'photo',
+                    model: 'Media',
+                },
             })
         }
 
         //4) Exec query to retrieve all review docs match found
         const DocsReviews = await QueryModfier.query.exec()
 
-        //5) If no product document found, throw err
+        //5) Create new query and apply modifier just filter only to count documents
+        const DocsCount = await new QueryModifier<typeof query>(
+            Review.find(),
+            req.query
+        )
+            .filter()
+            .query.count()
+            .exec()
+
+        //6) If no product document found, throw err
         if (!DocsReviews) {
             throw new AppError('No review document found to be retrieved.', 404)
         }
 
-        //6) Make url complete for image
+        //7) Make url complete for image
         const tranformedDocsReview = DocsReviews.map((prod) => {
             //=> Transform images
             const tranformedImages: { url: string }[] = []
@@ -251,6 +291,18 @@ export const getManyReview = catchAsyncHandler(
                     })
             })
 
+            //=> Transform author photo
+            const transformedAuthor = prod.author
+            if (
+                transformedAuthor instanceof User &&
+                transformedAuthor.photo instanceof Media
+            ) {
+                transformedAuthor.photo.url = makeUrlComplete(
+                    transformedAuthor.photo.url,
+                    req
+                )
+            }
+
             //=> Return
             return {
                 ...prod.toJSON(),
@@ -259,14 +311,76 @@ export const getManyReview = catchAsyncHandler(
             }
         })
 
-        //7) Send a response
+        //8) Send a response
         res.status(200).json({
+            count: DocsCount,
             status: 'success',
             results: tranformedDocsReview.length,
             data: tranformedDocsReview,
         })
     }
 )
+
+/**
+ ** ==========================================================
+ ** getRatingsOfProduct - Get rartings of a product
+ ** ==========================================================
+ */
+export const getRatingsOfProduct = catchAsyncHandler(async (req, res) => {
+    //1) Get product id
+    const ids = req.params.prodId.split(',')
+
+    //2) Get rating via aggreggation
+    const ratings = await Review.aggregate([
+        {
+            $match: { product: { $in: ids.map((id) => new ObjectId(id)) } },
+        },
+        {
+            $group: {
+                _id: '$product',
+                product: { $first: '$product' },
+                ratings: { $push: '$rating' },
+            },
+        },
+        {
+            $unwind: '$ratings',
+        },
+        {
+            $group: {
+                _id: { ratings: '$ratings', product: '$product' },
+                product: { $first: '$product' },
+                rating_star: { $first: '$ratings' },
+                ratings_count: { $sum: 1 },
+            },
+        },
+        {
+            $group: {
+                _id: '$product',
+                product: { $first: '$product' },
+                ratings: {
+                    $push: {
+                        rating_star: '$rating_star',
+                        ratings_count: '$ratings_count',
+                    },
+                },
+            },
+        },
+        {
+            $sort: { rating_star: 1 },
+        },
+        {
+            $project: {
+                _id: 0,
+            },
+        },
+    ])
+
+    //3) Send reponse
+    res.status(200).json({
+        status: 'success',
+        data: ratings,
+    })
+})
 
 /**
  ** ==========================================================
@@ -364,7 +478,7 @@ export const updateReview = catchAsyncHandler(
 
         //6) Update condition differs based on being update by admin or user
         const updateCondition = req.body.author
-            ? { _id: id, author: req.body.author, product: req.body.product }
+            ? { author: req.body.author, product: req.body.product }
             : { _id: id }
 
         //7) Update review
@@ -372,15 +486,23 @@ export const updateReview = catchAsyncHandler(
             updateCondition,
             reviewToBeUpdated,
             { new: true }
-        ).populate({
-            path: 'product author images',
-            select: {
-                _id: 1,
-                url: 1,
-                name: 1,
-                title: 1,
-            },
-        })
+        )
+            .populate({
+                path: 'product images',
+                select: {
+                    _id: 1,
+                    url: 1,
+                    name: 1,
+                    title: 1,
+                },
+            })
+            .populate({
+                path: 'author',
+                populate: {
+                    path: 'photo',
+                    model: 'Media',
+                },
+            })
 
         //8) if no doc found with the id, throw err
         if (!DocReview) {
@@ -399,7 +521,17 @@ export const updateReview = catchAsyncHandler(
                 })
         })
 
-        //10) Send a response
+        //10) Make url complete for author url
+        if (
+            DocReview.author instanceof User &&
+            DocReview.author.photo instanceof Media
+        )
+            DocReview.author.photo.url = makeUrlComplete(
+                DocReview.author.photo.url,
+                req
+            )
+
+        //11) Send a response
         res.status(200).json({
             status: 'success',
             data: { ...DocReview.toJSON(), images: transformedImages },
@@ -421,7 +553,7 @@ export const deleteReview = catchAsyncHandler(
         const deleteCondition =
             req.user.role === 'admin'
                 ? { _id: id }
-                : { _id: id, author: req.user._id, product: req.params.prodId }
+                : { author: req.user._id, product: req.params.prodId }
 
         //3) Delete review
         const DelResults = await Review.deleteOne(deleteCondition)

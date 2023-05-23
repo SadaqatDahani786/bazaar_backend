@@ -50,9 +50,9 @@ Router.route('/filter/color').get(getColors)
 Router.route('/filter/size').get(getSizes)
 
 //[Retrieve] recommendations based on interests
-Router.route('/similar-viewed-items/:prodId').get(getSimilarViewedItems)
 Router.route('/top-selling-products').get(getTopSellingProducts)
-Router.route('/frequently-bought-together/:prodId').get(
+Router.route('/:prodId/similar-viewed-items').get(getSimilarViewedItems)
+Router.route('/:prodId/frequently-bought-together').get(
     getFrquentlyBoughtTogether
 )
 Router.route('/trending-items-in-your-area').get(

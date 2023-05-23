@@ -151,6 +151,12 @@ export const getProduct = catchAsyncHandler(
                 select: { name: 1, slug: 1, parent: 1, _id: 1 },
             })
         }
+        if (isToPopulate('variants', req)) {
+            query.populate({
+                path: 'variants.terms.image',
+                select: { url: 1, _id: 1, title: 1 },
+            })
+        }
 
         //4) Apply query modifiers to query
         const QueryModfier = new QueryModifier<typeof query>(
@@ -183,6 +189,23 @@ export const getProduct = catchAsyncHandler(
                 })
         })
 
+        //8) Make url complete for variants images
+        const transformedVariants = DocProduct.variants.map((variant) => ({
+            name: variant.name,
+            variant_type: variant.variant_type,
+            terms: variant.terms.map(({ name, image }) => ({
+                name,
+                image: {
+                    _id: image instanceof Media ? image._id : undefined,
+                    title: image instanceof Media ? image.title : undefined,
+                    url:
+                        image instanceof Media
+                            ? makeUrlComplete(image.url, req)
+                            : undefined,
+                },
+            })),
+        }))
+
         //9) Send a response
         res.status(200).json({
             status: 'success',
@@ -192,6 +215,7 @@ export const getProduct = catchAsyncHandler(
                     tranformedImageGallery.length > 0
                         ? tranformedImageGallery
                         : undefined,
+                variants: transformedVariants,
             },
         })
     }
@@ -244,6 +268,12 @@ export const getManyProduct = catchAsyncHandler(
                 },
             })
         }
+        if (isToPopulate('variants', req)) {
+            query.populate({
+                path: 'variants.terms.image',
+                select: { url: 1, _id: 1, title: 1 },
+            })
+        }
 
         //4) Exec query to retrieve all product docs match found
         const DocsProduct = await QueryModfier.query.exec()
@@ -267,7 +297,7 @@ export const getManyProduct = catchAsyncHandler(
 
         //7) Make url complete for image
         const tranformedDocsProduct = DocsProduct.map((prod) => {
-            //=> Transform omage gallery
+            //=> Transform image gallery
             const tranformedImageGallery: { url: string }[] = []
             prod?.image_gallery?.map((media) => {
                 if (media instanceof Media)
@@ -281,7 +311,7 @@ export const getManyProduct = catchAsyncHandler(
             if (prod.image instanceof Media)
                 transformedImage.url = makeUrlComplete(prod.image.url, req)
 
-            //=> Transform category mage
+            //=> Transform category image
             const transformedCategories = prod.categories?.map((cat) => {
                 if (cat instanceof Category) {
                     return {
@@ -295,6 +325,23 @@ export const getManyProduct = catchAsyncHandler(
                 return cat
             })
 
+            //=> Transform Variants Images
+            const transformedVariants = prod.variants.map((variant) => ({
+                name: variant.name,
+                variant_type: variant.variant_type,
+                terms: variant.terms.map(({ name, image }) => ({
+                    name,
+                    image: {
+                        _id: image instanceof Media ? image._id : undefined,
+                        title: image instanceof Media ? image.title : undefined,
+                        url:
+                            image instanceof Media
+                                ? makeUrlComplete(image.url, req)
+                                : undefined,
+                    },
+                })),
+            }))
+
             //=> Return
             return {
                 ...prod.toJSON(),
@@ -304,6 +351,7 @@ export const getManyProduct = catchAsyncHandler(
                         ? tranformedImageGallery
                         : undefined,
                 categories: transformedCategories,
+                variants: transformedVariants,
             }
         })
 
@@ -415,6 +463,7 @@ export const getTopSellingProducts = catchAsyncHandler(
         })
     }
 )
+
 /**
  ** ==========================================================
  ** getFrequentlyBoughtTogether - Get frequently bought together items
@@ -453,6 +502,25 @@ export const getFrquentlyBoughtTogether = catchAsyncHandler(
                 },
             },
             {
+                $unwind: {
+                    path: '$product',
+                },
+            },
+            {
+                $lookup: {
+                    from: 'media',
+                    localField: 'product.image',
+                    foreignField: '_id',
+                    as: 'image',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$image',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
                 $project: {
                     _id: 0,
                 },
@@ -462,11 +530,27 @@ export const getFrquentlyBoughtTogether = catchAsyncHandler(
             },
         ])
 
-        //3) Send a response
+        //3) Transform to make url complete
+        const transformedDocs = boughtTogetherItems.map(
+            (prod: { product: IProduct; image: IMedia }) => {
+                if (prod.image) {
+                    return {
+                        ...prod,
+                        image: {
+                            ...prod.image,
+                            url: makeUrlComplete(prod.image.url, req),
+                        },
+                    }
+                }
+                return prod
+            }
+        )
+
+        //4) Send a responses
         res.json({
             status: 'success',
-            reuslts: boughtTogetherItems.length,
-            data: boughtTogetherItems,
+            reuslts: transformedDocs.length,
+            data: transformedDocs,
         })
     }
 )
