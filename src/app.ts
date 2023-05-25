@@ -84,7 +84,11 @@ app.use(xss())
 
 app.use(
     cors({
-        origin: 'http://localhost:3000',
+        origin: [
+            'http://localhost:3000',
+            'https://checkout.stripe.com',
+            'https://bazaar.loca.lt',
+        ],
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         preflightContinue: false,
         optionsSuccessStatus: 204,

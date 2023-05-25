@@ -1,9 +1,6 @@
 import { Request, Response } from 'express'
 import stripe from 'stripe'
 
-//Utils
-import makeUrlComplete from '../utils/makeUrlComplete'
-
 //Error Handling
 import AppError from '../error handling/AppError'
 import { catchAsyncHandler } from '../error handling/errorHandlers'
@@ -14,7 +11,6 @@ import Product from '../models/Product'
 import Order, { IOrder } from '../models/Order'
 import User, { IUser } from '../models/User'
 import Media from '../models/Media'
-import Stripe from 'stripe'
 
 /**
  ** ==============================================================
@@ -183,8 +179,8 @@ export const createCheckoutSession = catchAsyncHandler(
         }
 
         //7) Success and Cancel URLS
-        const success_url = encodeURI(makeUrlComplete('checkout/success', req))
-        const cancel_url = makeUrlComplete('cart', req)
+        const success_url = req.headers.origin + '/order_success'
+        const cancel_url = req.headers.origin + '/cart'
 
         //8) Create stripe checkiut session
         const checkout_session = await stripeAPI.checkout.sessions.create({
@@ -197,13 +193,14 @@ export const createCheckoutSession = catchAsyncHandler(
             line_items: cart.products.map((prod) => ({
                 quantity: prod.quantity,
                 price_data: {
-                    currency: 'usd',
+                    currency: 'eur',
                     unit_amount_decimal:
                         prod.product instanceof Product
-                            ? prod.product.selling_price
-                                ? prod.product.selling_price.toString()
-                                : prod.product.price.toString()
-                            : '0',
+                            ? (
+                                  (prod.product.selling_price ||
+                                      prod.product.price) * 100
+                              ).toString()
+                            : '0.0',
                     product_data: {
                         name:
                             prod.product instanceof Product
@@ -211,14 +208,16 @@ export const createCheckoutSession = catchAsyncHandler(
                                 : '',
                         description:
                             prod.product instanceof Product
-                                ? prod.product.description
+                                ? prod.product.description.length > 100
+                                    ? prod.product.description.slice(0, 100) +
+                                      '...'
+                                    : prod.product.description
                                 : '',
                         images: [
                             prod.product instanceof Product &&
-                            prod.product.image instanceof Media
-                                ? 'https://bazaar.loca.lt/' +
-                                  prod.product.image.url
-                                : '',
+                            prod.product?.image instanceof Media
+                                ? `https://bazaar.loca.lt/${prod.product.image.url}`
+                                : 'https://joadre.com/wp-content/uploads/2019/02/no-image.jpg',
                         ],
                     },
                 },
@@ -240,7 +239,10 @@ export const createCheckoutSession = catchAsyncHandler(
                 session: checkout_session,
             })
         } else {
-            res.redirect(303, checkout_session.url)
+            res.status(200).json({
+                status: 'success',
+                data: checkout_session.url,
+            })
         }
     }
 )
@@ -306,7 +308,7 @@ export const checkoutSuccessStripeWebhook = catchAsyncHandler(
                 client_reference_id: string
             }
 
-            event.data.object as Stripe.Card
+            event.data.object as stripe.Card
 
             //=> Find user with id stored in event
             const DocUser = await User.findById(eventObj.client_reference_id)

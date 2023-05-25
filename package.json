@@ -10,7 +10,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "prettier:fix": "prettier --parser typescript --write \"src/**/*.ts\"",
-    "lt": "lt --port 3800 -h \"http://localtunnel.me\" -s bazaar"
+    "lt": "lt --port 5000 --host \"http://localtunnel.me\" --subdomain bazaar"
   },
   "repository": {
     "type": "git",
