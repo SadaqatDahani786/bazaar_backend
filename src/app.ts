@@ -71,16 +71,16 @@ app.route(`${API_ENDPOINT}/checkout/success-stripe-webhook`).post(
  ** ====================================
  */
 
-app.use(helm())
+// app.use(helm())
 app.use('/api', limitRequests)
 
 app.use(cookieParser())
 app.use(bodyParser.json({ limit: '10kb' }))
 app.use(express.json({ limit: '10kb' }))
 
-// app.use(sanitize()) disabled because due to not allowing "." through req
 app.use(xss())
-app.use(hppPrevent.hppPrevent())
+// app.use(sanitize()) disabled because due to not allowing "." through req
+// app.use(hppPrevent.hppPrevent()) disabled because due to not allowing arrays of objects through req
 
 app.use(
     cors({

@@ -32,7 +32,7 @@ Router.route('/ratings/:prodId').get(getRatingsOfProduct)
 
 //[Retrive] [Create] [Update] [Delete] current user review
 Router.route('/user')
-    .get(isAuthenticated, setFilterQuery, getManyReview)
+    .get(setFilterQuery, getManyReview)
     .post(
         isAuthenticated,
         multerUpload.fields([

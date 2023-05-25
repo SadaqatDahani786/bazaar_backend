@@ -29,8 +29,8 @@ const Router = express.Router()
  */
 Router.use(isAuthenticated)
 
-//[Retrive] cart
-Router.route('/my-cart').get(setParamIdToAuthUserId, getManyCart)
+//[Retrive] user cart
+Router.route('/user').get(setParamIdToAuthUserId, getCart)
 
 //[Add-item] in cart
 Router.route('/add-item').post(isAuthenticated, addItemInCart)

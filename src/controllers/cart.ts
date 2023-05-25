@@ -6,12 +6,15 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Models & Types
 import Cart from '../models/Cart'
+import Media from '../models/Media'
 import Product from '../models/Product'
 import { ObjectId } from 'mongodb'
 
 //Utils & Packages
 import { isToPopulate } from '../utils/isToPopulate'
 import QueryModifier from '../packages/QueryModifier'
+
+import makeUrlComplete from '../utils/makeUrlComplete'
 
 /**
  ** ==========================================================
@@ -37,14 +40,15 @@ export const getCart = catchAsyncHandler(
         //1) Get id of category to be retrieved
         const id = req.params.id
 
+        const condition = req.user.role === 'admin' && id ? { _id: id } : {}
+
         //2) Get query
-        const query = Cart.findById(id)
+        const query = Cart.findOne(condition)
 
         //3) Populate fields only when it's okay to do so
         if (isToPopulate('products', req)) {
             query.populate({
                 path: 'products.product',
-                select: 'title',
             })
         }
 
@@ -57,19 +61,64 @@ export const getCart = catchAsyncHandler(
         //5) Exec query to retrieve cart doc found
         const DocCart = await QueryModfier.query.exec()
 
-        //6) If no doc found with the id, throw error
-        if (!DocCart) {
+        //6) No document found for admin user, throw error, else create new doc
+        if (!DocCart && req.user.role === 'admin' && id) {
             throw new AppError(
                 'No cart document found to retrieve with the id provided.',
                 404
             )
-        }
+        } else if (!DocCart) {
+            //=> Create new doc
+            const DocNew = await Cart.create({
+                owner: req.user._id,
+                products: [],
+            })
 
-        //7) Send a response
-        res.status(200).json({
-            status: 'success',
-            data: DocCart,
-        })
+            //=> Populate owner
+            await DocNew.populate({ path: 'owner' })
+
+            //=> Send response
+            res.status(200).json({
+                status: 'success',
+                data: DocNew,
+            })
+        } else {
+            //) Populate products
+            await DocCart.populate({
+                path: 'products.product',
+                populate: [
+                    {
+                        path: 'image',
+                        model: 'Media',
+                    },
+                ],
+            })
+
+            //=> Transform product image url to make it complete
+            const transformedProducts = DocCart.products.map(
+                ({ product, selected_variants, quantity }) => {
+                    if (
+                        product instanceof Product &&
+                        product.image instanceof Media
+                    ) {
+                        product.image.url = makeUrlComplete(
+                            product.image.url,
+                            req
+                        )
+                    }
+                    return { product, selected_variants, quantity }
+                }
+            )
+
+            //=> Send a response
+            res.status(200).json({
+                status: 'success',
+                data: {
+                    ...DocCart.toJSON(),
+                    products: transformedProducts,
+                },
+            })
+        }
     }
 )
 
@@ -233,10 +282,37 @@ export const addItemInCart = catchAsyncHandler(
         //9) Save changes
         await DocCart.save()
 
-        //10) Send a response
+        //10) Populate products
+        await DocCart.populate({
+            path: 'products.product',
+            populate: [
+                {
+                    path: 'image',
+                    model: 'Media',
+                },
+            ],
+        })
+
+        //10) Transform product image url to make it complete
+        const transformedProducts = DocCart.products.map(
+            ({ product, selected_variants, quantity }) => {
+                if (
+                    product instanceof Product &&
+                    product.image instanceof Media
+                ) {
+                    product.image.url = makeUrlComplete(product.image.url, req)
+                }
+                return { product, quantity, selected_variants }
+            }
+        )
+
+        //11) Send a response
         res.status(200).json({
             status: 'success',
-            data: DocCart,
+            data: {
+                ...DocCart.toJSON(),
+                products: transformedProducts,
+            },
         })
     }
 )
@@ -328,10 +404,37 @@ export const removeItemFromCart = catchAsyncHandler(
             )
         }
 
-        //8) Send a response
+        //8) Populate products
+        await DocCart.populate({
+            path: 'products.product',
+            populate: [
+                {
+                    path: 'image',
+                    model: 'Media',
+                },
+            ],
+        })
+
+        //9) Transform product image url to make it complete
+        const transformedProducts = DocCart.products.map(
+            ({ product, selected_variants, quantity }) => {
+                if (
+                    product instanceof Product &&
+                    product.image instanceof Media
+                ) {
+                    product.image.url = makeUrlComplete(product.image.url, req)
+                }
+                return { product, selected_variants, quantity }
+            }
+        )
+
+        //10) Send a response
         res.status(200).json({
             status: 'success',
-            data: DocCart,
+            data: {
+                ...DocCart.toJSON(),
+                products: transformedProducts,
+            },
         })
     }
 )
