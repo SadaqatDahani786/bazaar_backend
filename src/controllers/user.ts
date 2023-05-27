@@ -220,19 +220,12 @@ export const getUser = catchAsyncHandler(
             DocUser.photo.url = makeUrlComplete(DocUser.photo.url, req)
 
         //8) Transormed DocUser to have the full url for product image
-        if (DocUser.history)
-            DocUser.history = DocUser.history?.map((prod) => {
-                if (
-                    prod.product instanceof Product &&
-                    prod.product.image instanceof Media
-                ) {
-                    prod.product.image.url = makeUrlComplete(
-                        prod.product.image.url,
-                        req
-                    )
-                }
-                return prod
-            })
+        DocUser.history?.map(({ product }) => {
+            if (product instanceof Product && product.image instanceof Media) {
+                const url = product.image.url
+                product.image.url = makeUrlComplete(url, req)
+            }
+        })
 
         //9) Send a response
         res.status(200).json({
@@ -391,23 +384,52 @@ export const getTotalusersCount = catchAsyncHandler(
 export const addItemToMyHistory = catchAsyncHandler(
     async (req: Request, res: Response) => {
         //1) Get prod if from params
-        const prodId = req.params.prodId
+        const prodId = req.params.prodId || req.query.id
 
         //2) Find and update only date, if already exist
         let DocUser = await User.findOneAndUpdate(
             { _id: req.user._id, 'history.product': prodId },
-            { $set: { 'history.$.touch_date': Date.now() } }
+            { $set: { 'history.$.touch_date': Date.now() } },
+            { new: true }
         )
 
         //3) If doesn't exist already push new
         if (!DocUser) {
-            DocUser = await User.findByIdAndUpdate(req.user._id, {
-                $addToSet: { history: { product: prodId } },
-            })
+            DocUser = await User.findByIdAndUpdate(
+                req.user._id,
+                {
+                    $addToSet: { history: { product: prodId } },
+                },
+                { new: true }
+            )
         }
 
-        //4) Send a response
-        res.json({ status: 'success', data: DocUser })
+        //4) Populate fields
+        await DocUser?.populate({
+            path: 'history.product',
+            populate: {
+                path: 'image',
+                model: 'Media',
+            },
+        })
+
+        //5) Make url complete for
+        DocUser?.history?.map((item) => {
+            if (
+                item.product instanceof Product &&
+                item.product.image instanceof Media
+            )
+                item.product.image.url = makeUrlComplete(
+                    item.product.image.url,
+                    req
+                )
+        })
+
+        //6) Send a response
+        res.status(200).json({
+            status: 'success',
+            data: DocUser,
+        })
     }
 )
 

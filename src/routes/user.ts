@@ -20,7 +20,7 @@ import multerUpload from '../packages/multer'
  ** Router
  ** ====================================
  */
-const Router = express.Router()
+const Router = express.Router({ mergeParams: true })
 
 /**
  ** ====================================
@@ -35,11 +35,8 @@ const Router = express.Router()
  */
 Router.use(isAuthenticated)
 
-//[Add] add item to my history
-Router.route('/add-item-to-my-history/:prodId').put(addItemToMyHistory)
-
-//[Clear] my history
-Router.route('/clear-my-history').delete(clearMyHistory)
+//[Update] [Delete] user browsing history
+Router.route('/history').patch(addItemToMyHistory).delete(clearMyHistory)
 
 //[Retrive] [Mofify] and [Delete] user profile
 Router.route('/me')

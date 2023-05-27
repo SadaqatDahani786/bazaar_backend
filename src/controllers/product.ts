@@ -254,6 +254,9 @@ export const getManyProduct = catchAsyncHandler(
         if (isToPopulate('categories', req)) {
             query.populate({
                 path: 'categories',
+                match: {
+                    slug: 'health-and-beauty',
+                },
                 select: {
                     name: 1,
                     slug: 1,
@@ -569,7 +572,7 @@ export const getSimilarViewedItems = catchAsyncHandler(
         const DocProduct = await Product.findById(prodId)
 
         //3) Aggregate to find similar viewed items
-        const DocProducts = await User.aggregate([
+        const SimilarViewedItems = await User.aggregate([
             {
                 $match: { 'history.product': new ObjectId(prodId) },
             },
@@ -591,8 +594,25 @@ export const getSimilarViewedItems = catchAsyncHandler(
                 },
             },
             {
+                $unwind: '$product',
+            },
+            {
                 $match: {
-                    'product.categories': { $in: DocProduct?.categories },
+                    'product.categories': { $in: DocProduct?.categories || [] },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'media',
+                    foreignField: '_id',
+                    localField: 'product.image',
+                    as: 'image',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$image',
+                    preserveNullAndEmptyArrays: true,
                 },
             },
             {
@@ -603,15 +623,33 @@ export const getSimilarViewedItems = catchAsyncHandler(
             {
                 $project: {
                     _id: 0,
+                    product: 1,
+                    image: 1,
                 },
             },
         ])
 
+        //3) Transform to make url complete
+        const transformedDocs = SimilarViewedItems.map(
+            ({ product, image }: { product: IProduct; image: IMedia }) => {
+                if (image) {
+                    return {
+                        ...product,
+                        image: {
+                            ...image,
+                            url: makeUrlComplete(image.url, req),
+                        },
+                    }
+                }
+                return product
+            }
+        )
+
         //4) Send a response
         res.status(200).json({
             status: 'success',
-            results: DocProducts.length,
-            data: DocProducts,
+            results: transformedDocs.length,
+            data: transformedDocs,
         })
     }
 )
@@ -680,6 +718,115 @@ export const getTrendingItemsInYourArea = catchAsyncHandler(
             status: 'success',
             results: DocsProduct.length,
             data: DocsProduct,
+        })
+    }
+)
+
+/**
+ ** ==========================================================
+ ** getUserInterestsItems - Get items that user might be interested in
+ ** ==========================================================
+ */
+export const getUserInterestsItems = catchAsyncHandler(
+    async (req: Request, res: Response) => {
+        //1) Get user insterests items
+        const userInterestsItems = await User.aggregate([
+            {
+                $lookup: {
+                    from: 'products',
+                    foreignField: '_id',
+                    localField: 'history.product',
+                    as: 'product',
+                },
+            },
+            {
+                $unwind: '$product',
+            },
+            {
+                $unwind: '$product.categories',
+            },
+            {
+                $lookup: {
+                    from: 'categories',
+                    foreignField: '_id',
+                    localField: 'product.categories',
+                    as: 'categories',
+                },
+            },
+            {
+                $unwind: '$categories',
+            },
+            {
+                $group: {
+                    _id: '$categories._id',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    foreignField: 'categories',
+                    localField: '_id',
+                    as: 'product',
+                },
+            },
+            {
+                $unwind: '$product',
+            },
+            {
+                $group: {
+                    _id: 'product._id',
+                    product: { $addToSet: '$product' },
+                },
+            },
+            {
+                $unwind: '$product',
+            },
+            {
+                $lookup: {
+                    from: 'media',
+                    foreignField: '_id',
+                    localField: 'product.image',
+                    as: 'image',
+                },
+            },
+            {
+                $unwind: { path: '$image', preserveNullAndEmptyArrays: true },
+            },
+            {
+                $sort: { count: -1 },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    product: 1,
+                    count: 1,
+                    image: 1,
+                },
+            },
+        ])
+
+        //3) Transform to make url complete
+        const transformedDocs = userInterestsItems.map(
+            ({ product, image }: { product: IProduct; image: IMedia }) => {
+                if (image) {
+                    return {
+                        ...product,
+                        image: {
+                            ...image,
+                            url: makeUrlComplete(image.url, req),
+                        },
+                    }
+                }
+                return product
+            }
+        )
+
+        //4) Send a response
+        res.status(200).json({
+            status: 'success',
+            results: transformedDocs.length,
+            data: transformedDocs,
         })
     }
 )

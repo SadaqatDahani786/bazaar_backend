@@ -16,8 +16,12 @@ import {
     updateProduct,
     getColors,
     getSizes,
+    getUserInterestsItems,
 } from '../controllers/product'
+
+//Routers
 import RouterReview from './review'
+import RouterUser from './user'
 
 /**
  ** ====================================
@@ -34,6 +38,9 @@ const Router = express.Router({ mergeParams: true })
 
 //[Get] Product Reviews
 Router.use('/:prodId/review', RouterReview)
+
+//[Get] User
+Router.use('/:prodId/user', RouterUser)
 
 /**
  ** ====================================
@@ -55,6 +62,7 @@ Router.route('/:prodId/similar-viewed-items').get(getSimilarViewedItems)
 Router.route('/:prodId/frequently-bought-together').get(
     getFrquentlyBoughtTogether
 )
+Router.route('/user-interests-item').get(isAuthenticated, getUserInterestsItems)
 Router.route('/trending-items-in-your-area').get(
     isAuthenticated,
     getTrendingItemsInYourArea
