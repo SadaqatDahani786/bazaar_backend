@@ -186,15 +186,25 @@ export const getManyOrder = catchAsyncHandler(
         //5) Exec query and retrive the matching doc found
         const DocsOrder = await queryModifier.query.exec()
 
-        //6) If no doc found, throw err
+        //6) Create new query and apply modifier just filter only to count documents
+        const DocsCount = await new QueryModifier<typeof query>(
+            Order.find(),
+            req.query
+        )
+            .filter()
+            .query.count()
+            .exec()
+
+        //7) If no doc found, throw err
         if (!DocsOrder) {
             throw new AppError('No order document found to be retrieved.', 404)
         }
 
-        //7) Send a response
+        //8) Send a response
         res.status(200).json({
             status: 'success',
             results: DocsOrder.length,
+            count: DocsCount,
             data: DocsOrder,
         })
     }

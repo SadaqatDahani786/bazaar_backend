@@ -477,8 +477,8 @@ export const updateReview = catchAsyncHandler(
         }
 
         //6) Update condition differs based on being update by admin or user
-        const updateCondition = req.body.author
-            ? { author: req.body.author, product: req.body.product }
+        const updateCondition = req.query.author
+            ? { author: req.query.author, product: req.query.product }
             : { _id: id }
 
         //7) Update review

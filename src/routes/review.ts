@@ -30,6 +30,9 @@ const Router = express.Router({ mergeParams: true })
 //[Retrive] ratings
 Router.route('/ratings/:prodId').get(getRatingsOfProduct)
 
+//[Retrieve] my reviews
+Router.route('/my-review').get(isAuthenticated, setFilterQuery, getManyReview)
+
 //[Retrive] [Create] [Update] [Delete] current user review
 Router.route('/user')
     .get(setFilterQuery, getManyReview)
@@ -45,6 +48,7 @@ Router.route('/user')
     )
     .put(
         isAuthenticated,
+        setFilterQuery,
         multerUpload.fields([
             {
                 name: 'images',

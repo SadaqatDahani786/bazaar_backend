@@ -48,7 +48,7 @@ export interface IUser {
 
 /**
  ** ====================================
- ** Interface [IUserMethods]
+ ** Interface [IUserMethods]s
  ** ====================================
  */
 interface IUserMethods {
