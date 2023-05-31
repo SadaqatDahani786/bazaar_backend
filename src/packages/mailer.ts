@@ -7,23 +7,25 @@ import AppError from '../error handling/AppError'
  ** ==========================================================
  */
 export const mail = async ({
-    mail,
+    from = 'bazaar.incorporation@gmail.com',
+    to = 'bazaar.incorporation@gmail.com',
     subject,
     html,
     message,
 }: {
-    mail: string
+    to?: string
     subject: string
-    html: string
+    html?: string
     message: string
+    from?: string
 }) => {
     //1) Get node env
     const isInDev = process.env.NODE_ENVIRONMENT === 'development'
 
     //2) Mail Options
     const mailOptions = {
-        from: 'bazaar.incorporation@gmail.com',
-        to: mail,
+        from: from,
+        to: to,
         subject: subject,
         html: html,
         text: message,

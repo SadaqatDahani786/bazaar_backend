@@ -287,7 +287,16 @@ export const getManyUser = catchAsyncHandler(
         //4) Exec query to retrieve all user docs match found
         const DocsUser = await QueryModfier.query.exec()
 
-        //5) Transormed DocsUser to have the full url for images
+        //5) Create new query and apply modifier just filter only to count documents
+        const DocsCount = await new QueryModifier<typeof query>(
+            User.find(),
+            req.query
+        )
+            .filter()
+            .query.count()
+            .exec()
+
+        //6) Transormed DocsUser to have the full url for images
         const transormedDocsUser = DocsUser.map((user) => {
             //=> User profile picture
             if (user?.photo instanceof Media)
@@ -310,11 +319,12 @@ export const getManyUser = catchAsyncHandler(
             return user
         })
 
-        //6) Send a response
+        //7) Send a response
         res.status(200).json({
             status: 'sucess',
             results: transormedDocsUser.length,
             data: transormedDocsUser,
+            count: DocsCount,
         })
     }
 )

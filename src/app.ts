@@ -21,6 +21,7 @@ import RouterCart from './routes/cart'
 import RouterOrder from './routes/order'
 import RouterCheckout from './routes/checkout'
 import RouterLocation from './routes/location'
+import RouterMail from './routes/mail'
 
 //Controllers
 import { checkoutSuccessStripeWebhook } from './controllers/checkout'
@@ -114,6 +115,7 @@ app.use(`${API_ENDPOINT}/cart`, RouterCart)
 app.use(`${API_ENDPOINT}/order`, RouterOrder)
 app.use(`${API_ENDPOINT}/checkout`, RouterCheckout)
 app.use(`${API_ENDPOINT}/location`, RouterLocation)
+app.use(`${API_ENDPOINT}/mail`, RouterMail)
 
 /**
  ** ====================================

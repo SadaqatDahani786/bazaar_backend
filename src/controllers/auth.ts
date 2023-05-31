@@ -108,7 +108,7 @@ export const signup = catchAsyncHandler(async (req, res) => {
 
         //mail
         await mail({
-            mail: user.email,
+            to: user.email,
             subject: 'Welcome',
             html: emailTemplateString,
             message: `Welcome to Bazaar, ${user.name}. We're glad to have you in our welcoming community.`,
@@ -253,7 +253,7 @@ export const forgotPassword = catchAsyncHandler(async (req, res) => {
 
             //mail
             await mail({
-                mail: user.email,
+                to: user.email,
                 subject: 'Password Reset',
                 html: emailTemplateString,
                 message: `Forgot your password? Don't worry we got you cover.`,

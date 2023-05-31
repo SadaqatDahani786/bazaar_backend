@@ -1,3 +1,4 @@
+import fs from 'fs'
 import { NextFunction, Request, Response } from 'express'
 
 //Utils
@@ -309,6 +310,15 @@ export const getManyMedia = catchAsyncHandler(async (req, res) => {
     //4) Exec query to retrieve all media docs match found
     const DocsMedia = await QueryModfier.query.exec()
 
+    //5) Create new query and apply modifier just filter only to count documents
+    const DocsCount = await new QueryModifier<typeof query>(
+        Media.find(),
+        req.query
+    )
+        .filter()
+        .query.count()
+        .exec()
+
     //5) If no doc founds, throw error
     if (!DocsMedia) {
         throw new AppError('No media document found to be retrieved.', 404)
@@ -325,6 +335,7 @@ export const getManyMedia = catchAsyncHandler(async (req, res) => {
         status: 'success',
         results: transormedDocsMedia.length,
         data: transormedDocsMedia,
+        count: DocsCount,
     })
 })
 
@@ -390,16 +401,19 @@ export const deleteMedia = catchAsyncHandler(async (req, res) => {
     const id = req.params.id
 
     //2) Delete media doc with id
-    const DelResults = await Media.deleteOne({ _id: id })
+    const DocMedia = await Media.findByIdAndDelete(id)
 
     //3) If no doc found with the id, throw error
-    if (!DelResults || DelResults.deletedCount <= 0) {
+    if (!DocMedia) {
         throw new AppError(
             'No media document found to be delete with the id provided.',
             404
         )
     }
 
-    //4) Send response
-    res.status(204).json()
+    //4) Delete attached media and send response
+    fs.unlink(`${global.app_dir}/public/${DocMedia.url}`, (err) => {
+        if (err) throw err
+        else res.status(204).json()
+    })
 })

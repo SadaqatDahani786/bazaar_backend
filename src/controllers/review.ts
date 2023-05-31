@@ -292,20 +292,24 @@ export const getManyReview = catchAsyncHandler(
             })
 
             //=> Transform author photo
-            const transformedAuthor = prod.author
+            let transformedAuthor = { ...prod.toObject().author }
             if (
-                transformedAuthor instanceof User &&
-                transformedAuthor.photo instanceof Media
+                prod.author instanceof User &&
+                prod.author.photo instanceof Media
             ) {
-                transformedAuthor.photo.url = makeUrlComplete(
-                    transformedAuthor.photo.url,
-                    req
-                )
+                transformedAuthor = {
+                    ...transformedAuthor,
+                    photo: {
+                        ...prod.author.photo.toObject(),
+                        url: makeUrlComplete(prod.author.photo.url, req),
+                    },
+                }
             }
 
             //=> Return
             return {
                 ...prod.toJSON(),
+                author: transformedAuthor,
                 images:
                     tranformedImages.length > 0 ? tranformedImages : undefined,
             }

@@ -702,6 +702,25 @@ export const getTrendingItemsInYourArea = catchAsyncHandler(
                 },
             },
             {
+                $unwind: {
+                    path: '$product',
+                },
+            },
+            {
+                $lookup: {
+                    from: 'media',
+                    foreignField: '_id',
+                    localField: 'product.image',
+                    as: 'image',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$image',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
                 $sort: {
                     sales: -1,
                 },
@@ -713,11 +732,24 @@ export const getTrendingItemsInYourArea = catchAsyncHandler(
             },
         ])
 
-        //4) Send a response
+        //4) Transformed Docs and make url complete for images
+        const transformedDocs = DocsProduct.map(
+            ({ product, image }: { product: IProduct; image: IMedia }) => ({
+                ...product,
+                image: !image
+                    ? undefined
+                    : {
+                          ...image,
+                          url: makeUrlComplete(image?.url, req),
+                      },
+            })
+        )
+
+        //5) Send a response
         res.status(200).json({
             status: 'success',
-            results: DocsProduct.length,
-            data: DocsProduct,
+            results: transformedDocs.length,
+            data: transformedDocs,
         })
     }
 )
