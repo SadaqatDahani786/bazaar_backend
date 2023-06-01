@@ -102,10 +102,10 @@ const schemaOrder = new Schema<IOrder>({
         },
     ],
     shipping: {
-        address: subSchemaUserAddress,
+        address: { ...subSchemaUserAddress },
     },
     billing: {
-        address: subSchemaUserAddress,
+        address: { ...subSchemaUserAddress },
         payment_method: {
             type: String,
             enum: ['card', 'cash_on_delivery'],

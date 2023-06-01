@@ -1,6 +1,9 @@
 import { ObjectId } from 'mongodb'
 import { Schema, model } from 'mongoose'
 import validator from 'validator'
+import Cart from './Cart'
+import Order from './Order'
+import User from './User'
 
 /**
  ** ====================================
@@ -234,6 +237,43 @@ schemaProduct.index({
     title: 'text',
     description: 'text',
 })
+
+/**
+ ** ====================================
+ ** MIDDLEWARES [DOCUMENT]
+ ** ====================================
+ */
+/*
+ ** **
+ ** ** ** Delete all product references
+ ** **
+ */
+schemaProduct.pre<{ _conditions: { _id: string } }>(
+    'deleteOne',
+    async function (next) {
+        if (this._conditions._id) {
+            //1) Get id of a product being deleted
+            const id = this._conditions._id
+
+            //2) Remove/delete product from all users' cart
+            await Cart.updateMany(
+                { 'products.product': id },
+                { $pull: { products: { product: id } } }
+            )
+
+            //3) Delete all orders with this product in it
+            await Order.deleteMany({ product: id })
+
+            //4) Remove deleted product from user's history
+            await User.updateMany(
+                { 'history.product': id },
+                { $pull: { history: { product: id } } }
+            )
+        }
+
+        next()
+    }
+)
 
 /**
  ** ====================================

@@ -1,8 +1,12 @@
 import { ObjectId } from 'mongodb'
 import { Schema, model, Model } from 'mongoose'
+
 import validator from 'validator'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
+
+import Review from './Review'
+import Order from './Order'
 
 /**
  ** ====================================
@@ -353,6 +357,29 @@ schemaUser.pre('save', async function (next) {
     //3) Call next middleware
     next()
 })
+
+/*
+ ** **
+ ** ** ** Delete all user references
+ ** **
+ */
+schemaUser.pre<{ _conditions: { _id: string } }>(
+    'deleteOne',
+    async function (next) {
+        if (this._conditions._id) {
+            //1) Get id of a user being deleted
+            const id = this._conditions._id
+
+            //2) Delete all reviews by this user
+            await Review.deleteMany({ author: id })
+
+            //3) Delete all orders by this user
+            await Order.deleteMany({ customer: id })
+        }
+
+        next()
+    }
+)
 
 /**
  ** ====================================
