@@ -13,7 +13,6 @@ import { ObjectId } from 'mongodb'
 //Utils & Packages
 import { isToPopulate } from '../utils/isToPopulate'
 import QueryModifier from '../packages/QueryModifier'
-
 import makeUrlComplete from '../utils/makeUrlComplete'
 
 /**
@@ -40,7 +39,8 @@ export const getCart = catchAsyncHandler(
         //1) Get id of category to be retrieved
         const id = req.params.id
 
-        const condition = req.user.role === 'admin' && id ? { _id: id } : {}
+        const condition =
+            req.user.role === 'admin' && id ? { _id: id } : { ...req.query }
 
         //2) Get query
         const query = Cart.findOne(condition)

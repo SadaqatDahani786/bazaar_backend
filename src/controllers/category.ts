@@ -145,7 +145,16 @@ export const getManyCategory = catchAsyncHandler(async (req, res) => {
     //4) Retrieve all category docs
     const DocsCategory = await QueryModfier.query.exec()
 
-    //5) Transormed DocsCategory to have the full url for images
+    //5) Create new query and apply modifier just filter only to count documents
+    const DocsCount = await new QueryModifier<typeof query>(
+        Category.find(),
+        req.query
+    )
+        .filter()
+        .query.count()
+        .exec()
+
+    //6) Transormed DocsCategory to have the full url for images
     const transformedDocCategories = DocsCategory.map((category) => {
         if (category?.image instanceof Media)
             return {
@@ -158,11 +167,12 @@ export const getManyCategory = catchAsyncHandler(async (req, res) => {
         return category
     })
 
-    //6) Send a response
+    //7) Send a response
     res.status(200).json({
         status: 'success',
         results: transformedDocCategories.length,
         data: transformedDocCategories,
+        count: DocsCount,
     })
 })
 

@@ -254,9 +254,6 @@ export const getManyProduct = catchAsyncHandler(
         if (isToPopulate('categories', req)) {
             query.populate({
                 path: 'categories',
-                match: {
-                    slug: 'health-and-beauty',
-                },
                 select: {
                     name: 1,
                     slug: 1,
