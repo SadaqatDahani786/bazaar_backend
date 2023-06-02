@@ -295,7 +295,7 @@ export const updateCategory = catchAsyncHandler(async (req, res) => {
         name: req.body.name,
         description: req.body.description,
         image: req.body.image,
-        parent: req.body.parent,
+        parent: req.body.parent || new ObjectId('000000000000000000000000'),
     }
 
     //3) Updated category document

@@ -185,6 +185,7 @@ export const getProduct = catchAsyncHandler(
         DocProduct?.image_gallery?.map((media) => {
             if (media instanceof Media)
                 tranformedImageGallery.push({
+                    ...media.toObject(),
                     url: makeUrlComplete(media.url, req),
                 })
         })

@@ -237,6 +237,7 @@ export const createCheckoutSession = catchAsyncHandler(
             res.status(200).json({
                 status: 'success',
                 session: checkout_session,
+                data: checkout_session.url,
             })
         } else {
             res.status(200).json({
