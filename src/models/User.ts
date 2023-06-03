@@ -158,7 +158,7 @@ export const subSchemaUserAddress = {
     address: {
         type: String,
         required: [true, 'Must provide "address" for an address.'],
-        maxlength: [60, 'Address must be 60 characters long or less.'],
+        maxlength: [120, 'Address must be 120 characters long or less.'],
         trim: true,
     },
     property_type: {
@@ -237,7 +237,7 @@ const schemaUser = new Schema<IUser, UserModel, IUserMethods>({
     },
     bio: {
         type: String,
-        maxlength: [160, 'User bio must be 160 characters long or less.'],
+        maxlength: [260, 'User bio must be 260 characters long or less.'],
         required: [true, 'A user must have a bio.'],
         trim: true,
     },

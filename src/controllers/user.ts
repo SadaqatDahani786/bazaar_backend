@@ -15,6 +15,7 @@ import { catchAsyncHandler } from '../error handling/errorHandlers'
 
 //Query Modifier
 import QueryModifier from '../packages/QueryModifier'
+import { ObjectId } from 'mongodb'
 
 /**
  ** ====================================
@@ -527,7 +528,7 @@ export const updateUser = catchAsyncHandler(
                 req.user?._id
             ) {
                 //=> Create media
-                mediaToBeCreated.uploaded_by = req.user._id
+                mediaToBeCreated.uploaded_by = new ObjectId(id)
                 const mediaCreated = await Media.create(mediaToBeCreated)
 
                 //=> Set newly created media as photo in user

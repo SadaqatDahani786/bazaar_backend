@@ -413,7 +413,7 @@ export const deleteMedia = catchAsyncHandler(async (req, res) => {
 
     //4) Delete attached media and send response
     fs.unlink(`${global.app_dir}/public/${DocMedia.url}`, (err) => {
-        if (err) throw err
+        if (err) new AppError(err.message, 400).sendResponse(res)
         else res.status(204).json()
     })
 })

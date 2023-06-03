@@ -87,8 +87,8 @@ const schemaProduct = new Schema<IProduct>({
         type: String,
         required: [true, 'A description for a product must be provided.'],
         maxlength: [
-            600,
-            'A product description must be 600 characters long or less.',
+            6000,
+            'A product description must be 6000 characters long or less.',
         ],
         trim: true,
         validate: {
