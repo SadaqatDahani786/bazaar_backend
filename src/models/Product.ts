@@ -77,7 +77,9 @@ const schemaProduct = new Schema<IProduct>({
         trim: true,
         validate: {
             validator: function (title: string) {
-                return validator.isAlpha(title, 'en-US', { ignore: ' ' })
+                return validator.isAlphanumeric(title, 'en-US', {
+                    ignore: /[\s-_]/g,
+                })
             },
             message:
                 'Product title must only contain letters. No numbers or special characters are allowed.',

@@ -435,7 +435,7 @@ export const getTopSellingProducts = catchAsyncHandler(
             { $unwind: { path: '$image', preserveNullAndEmptyArrays: true } },
             {
                 $sort: {
-                    sold: -1,
+                    sales: -1,
                 },
             },
         ])
